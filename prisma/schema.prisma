@@ -1,0 +1,132 @@
+// Prisma ORM v7: no `url`/`directUrl` here — connection strings live in prisma.config.ts
+// and are supplied to PrismaClient at runtime via a driver adapter (see src/lib/db.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Plain `DateTime` (no @db.Timestamptz) maps to Postgres `timestamp(3)` WITHOUT time zone by
+// default for the postgresql connector — this matches our "naive local wall-clock time, no
+// timezone conversion" decision (see CLAUDE.md §3) without needing an explicit @db annotation.
+// Don't "fix" these into @db.Timestamptz.
+
+enum WorkDayStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  HOLIDAY
+}
+
+enum TaskTimerStatus {
+  NONE
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+enum SkillCategory {
+  LESS_THAN_30
+  BETWEEN_30_70
+  MORE_THAN_70
+}
+
+/// One row per calendar day the user has touched (started work, or marked a holiday).
+/// Day-of-week is always derived from `date` at read time — never stored.
+model WorkDay {
+  id             String        @id @default(cuid())
+  date           DateTime      @db.Date
+  checkIn        DateTime?
+  checkOut       DateTime?
+  breakSeconds   Int           @default(0)
+  breakStartedAt DateTime?
+  status         WorkDayStatus @default(NOT_STARTED)
+  isHoliday      Boolean       @default(false)
+  holidayReason  String?
+  notes          String?
+  tasks          Task[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([date])
+  @@map("work_days")
+}
+
+/// A single task entry within a WorkDay. `taskId` (e.g. "T-1039") is a free-text, validated
+/// label — not globally unique, since the same Task ID can recur across different days.
+model Task {
+  id              String          @id @default(cuid())
+  workDayId       String
+  workDay         WorkDay         @relation(fields: [workDayId], references: [id], onDelete: Cascade)
+  taskId          String
+  description     String
+  durationSeconds Int             @default(0)
+  link            String?
+  order           Int             @default(0)
+  timerStatus     TaskTimerStatus @default(NONE)
+  timerStartedAt  DateTime?
+  skills          TaskSkill[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([workDayId])
+  @@index([taskId])
+  @@map("tasks")
+}
+
+/// `category` is always derived from `proficiencyPercentage` (see src/lib/domain/skill.ts) —
+/// never set directly by callers, including the seed script.
+model Skill {
+  id                    String         @id @default(cuid())
+  name                  String         @unique
+  category              SkillCategory
+  proficiencyPercentage Int
+  notes                 String?
+  history               SkillHistory[]
+  tasks                 TaskSkill[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@map("skills")
+}
+
+/// Append-only log of proficiency changes. Not written for the initial seed value — only for
+/// actual changes after a Skill already exists (see src/lib/data/skill.ts).
+model SkillHistory {
+  id             String   @id @default(cuid())
+  skillId        String
+  skill          Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  fromPercentage Int
+  toPercentage   Int
+  changedAt      DateTime @default(now())
+
+  @@index([skillId])
+  @@map("skill_history")
+}
+
+/// Optional many-to-many association between a Task and the Skill(s) it involved.
+model TaskSkill {
+  taskId  String
+  skillId String
+  task    Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  skill   Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, skillId])
+  @@index([skillId])
+  @@map("task_skills")
+}
+
+/// Reference calendar of known holidays (national/company), distinct from WorkDay.isHoliday
+/// (the actual recorded status for a day) — see CLAUDE.md §3 for why these are separate.
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("holidays")
+}

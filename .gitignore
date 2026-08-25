@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# env files (never commit real credentials)
+.env
+.env.local
+.env.*.local
+
+# next.js
+.next/
+out/
+
+# generated prisma client
+src/generated/
+
+# build output
+dist/
+build/
+
+# testing
+coverage/
+playwright-report/
+test-results/
+playwright/.auth/
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
