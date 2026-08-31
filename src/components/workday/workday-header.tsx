@@ -76,20 +76,18 @@ export function WorkDayHeader({
   }
 
   return (
-    <section className="border-border bg-card border-l-primary flex flex-col gap-3.5 rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
+    <section className="border-border bg-card flex flex-col gap-3.5 rounded-lg border border-l-2 border-l-accent p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+          <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
             <CalendarRange className="size-4" />
           </span>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {formatDisplayDate(workDay.date)}
-          </h1>
+          <h1 className="font-display text-2xl">{formatDisplayDate(workDay.date)}</h1>
         </div>
         <div className="flex items-center gap-2">
           {isWeekend(workDay.date) && <Badge variant="outline">Weekend</Badge>}
           {workDay.isHoliday && (
-            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-link">
+            <Badge variant="brand">
               <PalmtreeIcon /> Holiday
             </Badge>
           )}

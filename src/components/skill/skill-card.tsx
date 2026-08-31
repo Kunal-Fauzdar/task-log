@@ -37,7 +37,7 @@ export function SkillCard({
   return (
     <div
       className={cn(
-        "border-border bg-card flex flex-col gap-2 rounded-lg border border-l-4 p-3.5 shadow-sm transition-shadow hover:shadow-md",
+        "border-border bg-card hover:border-accent flex flex-col gap-2 rounded-lg border border-l-2 p-4 transition-colors",
         borderClass,
       )}
     >

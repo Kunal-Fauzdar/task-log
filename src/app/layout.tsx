@@ -1,16 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display, JetBrains_Mono } from "next/font/google";
 
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 
 import "./globals.css";
 
-// Per design.md: Inter for both display and body copy (one family, weight does the work of
-// distinguishing headings — no separate display face), JetBrains Mono for labels/technical
-// metadata (Task IDs, status pills). Both applied globally via CSS variables so individual
-// components never need to reach for a font-family class themselves.
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const jetbrainsMono = JetBrains_Mono({
+// Type system rebuilt on the supplied "Aether" reference (design.md + the two screenshots):
+//  - Plus Jakarta Sans  — all UI text, body copy, tables, headings. One workhorse family.
+//  - Playfair Display    — reserved for "display moments" only: page-header titles and the
+//    date on a work-day's own page. Italic, the way the reference uses it on card titles.
+//  - JetBrains Mono      — technical metadata: Task IDs, ISO dates, section eyebrow labels.
+// All three are exposed as CSS variables so components never hard-code a font-family.
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const display = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-display",
+  style: ["normal", "italic"],
+  display: "swap",
+});
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
@@ -27,13 +39,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Dark is this app's only real theme — a single-user personal tool, not a light/dark toggle
-    // product. Forced via this class rather than `prefers-color-scheme` so it's consistent
-    // regardless of OS setting.
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
       <body className="min-h-screen antialiased">
-        <Header />
-        <main className="mx-auto max-w-6xl px-4 py-5">{children}</main>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -95,7 +95,7 @@ export function TaskSection({
       </div>
 
       {tasks.length === 0 ? (
-        <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
+        <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
           No tasks logged for this day yet.
         </p>
       ) : (

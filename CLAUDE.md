@@ -340,6 +340,104 @@ that predates it.** The image (fifth/sixth pass) looked good on cards that alrea
   for the fixed spots (table rows, calendar cells, the Open button, link-colored text), not just
   a general look-over.
 
+**Eighth pass — full retheme onto the "Aether" reference + an explicit anti-AI design brief
+(user supplied a rewritten `design.md` with two screenshots and a long "ANTI-AI WEBSITE DESIGN
+SYSTEM" spec: forbidding gradients / glassmorphism / glow shadows / hover-lift / emoji /
+decorative icons / generic card grids, demanding real hierarchy, product-specific copy,
+intentional typography).** This threw out the blue/purple/black direction of passes 4–7
+entirely.
+- **`design.md` is now three concatenated template dumps.** The screenshots correspond to the
+  middle one — "Aether": a near-monochrome green system (primary `#B1E09D`, surface `#061C15`,
+  accent `#82A89C`, border `#D1DEDC`, ink `#111827`/`#4B5563`), Plus Jakarta Sans display,
+  Playfair Display body, JetBrains Mono labels. Two decisions confirmed with the user via
+  `AskUserQuestion` before starting: (1) **light canvas** — the Aether palette's own
+  `background` role is the light green, and screenshot 2 is light, so `:root` is now the only
+  theme and the `.dark` block was deleted (no more `dark` class on `<html>`, no
+  `prefers-color-scheme`); (2) **Playfair for display moments only** — page-header titles and
+  the work-day date headline get `.font-display` (Playfair italic); everything else, including
+  all tables/forms, stays Plus Jakarta Sans, because full serif body copy wrecks readability in
+  this app's density. `next/font/google` now loads Plus_Jakarta_Sans / Playfair_Display /
+  JetBrains_Mono.
+- **`globals.css` rebuilt from scratch.** Palette hexes taken verbatim from design.md where it
+  defines a role; roles it doesn't (`--secondary`/`--muted` neutral surfaces) derived to sit at
+  the same depth. **Six+ work-day / skill / task states have to stay distinguishable with an
+  almost-monochrome palette**, so the greens are used as a deliberate ramp — hairline `outline`
+  → sage `accent` → bright green `success` → deepest green `brand-strong` — encoding
+  NOT_STARTED → IN_PROGRESS → COMPLETED → HOLIDAY (see `WORK_DAY_STATUS_BADGE_VARIANT`, now
+  `outline`/`accent`/`success`/`brand`), and the skill proficiency ramp is grey-green → sage →
+  green (`SKILL_CATEGORY_*_CLASS`, de-gradiented). Two off-green signals — muted amber
+  (`--warning`) and muted brick (`--destructive`) — are reserved strictly for "needs attention"
+  and "delete/invalid"; the anti-AI brief itself calls for real error states, and a delete
+  button must not read as "completed". `--link` (`#1f5c43`) is the readable-green foreground for
+  text links / colored glyphs (green primary on white fails AA as text). Body backdrop is one
+  quiet 340px top-edge gradient — no image (the old `background.jpg` is blue, off-palette, now
+  unused), no blobs/mesh. New `.eyebrow` (mono kicker) and `.font-display` utilities; `.dark`
+  and `.text-gradient-brand` removed.
+- **Primitives de-AI'd.** `Button`: flat fills, **pill shape** (`rounded-full`, matching
+  screenshot 2's CTAs), no gradient/glow/`hover:brightness`/`hover:-translate`; new `accent`
+  variant = the bright-green secondary CTA. `Badge`: flat fills, added `accent`/`brand`
+  variants, dropped `info`. `StatTile`: no glass/`backdrop-blur`/gradient-wash/hover-lift/
+  gradient-icon-badge/gradient-bar — now a bordered card with a 2px accent top rule, mono
+  `.eyebrow` label, big tabular number, optional `hint`. `PageHeader`: no gradient icon badge,
+  no per-page decorative hue (the `accent` prop and its `teal`/`violet`/`cyan` keys are gone
+  from every call site) — now a mono eyebrow + Playfair title + description; Dashboard finally
+  has a real page title. `Dialog`/`AlertDialog` content → `bg-popover` (crisp white) instead of
+  the green-tinted `bg-background`; `Input`/`Textarea` → `bg-card`. `Progress` track → `bg-muted`.
+- **Mechanical sweep across ~20 component files** (via `perl -pi`): the shared table wrapper
+  `bg-card/85 backdrop-blur-md` → `border-border bg-card`; empty-state boxes `bg-card/40
+  backdrop-blur-md p-5` → `bg-card p-6`; section-header icon badges `from-primary/25
+  to-accent/25 … bg-gradient-to-br` → `bg-secondary text-link`; the three "hero" cards' `border-l-4
+  shadow-primary/5` → `border-l-2 border-l-accent`; `CalendarGrid` cells → flat state fills +
+  today ring on `--ring`; calendar legend swatches realigned to the grid's actual state colors;
+  every `text-info`/`text-accent`-as-glyph → `text-link`.
+- **Navigation moved to a fixed left sidebar** (user request, same message as the settings-500
+  fix below). `src/components/layout/header.tsx` now renders a `w-64` vertical `<aside>` (`hidden
+  lg:flex`, `fixed inset-y-0 left-0`, `border-r`) — wordmark in a bordered top block, nav items
+  stacked with icon + label, Log Out pinned at the bottom behind a `border-t`. Active item = a
+  `bg-secondary` chip with an `after:` accent bar flush to the left edge. Below `lg` it's a
+  sticky top bar + a `-translate-x-full` slide-in drawer with a fading backdrop (both `lg:hidden`,
+  so at the e2e default 1280px viewport they're `display:none` and `getByRole("navigation",
+  {name:"Primary"})` still resolves to exactly one). New `src/components/layout/app-shell.tsx`
+  (client) owns the frame: it applies `lg:pl-64` to the content wrapper for every route and
+  renders a chrome-free full-bleed `<main>` for `/login`. `layout.tsx` renders `<AppShell>` and
+  no longer imports `Header` directly. `Sparkles` (a forbidden decorative/"AI" glyph) swapped
+  for `GraduationCap` on Skills everywhere it appeared.
+- **Subtle motion only** (user asked for "very minor" animation). One `route-fade` keyframe
+  (0.22s opacity + 6px rise) applied via a `key={pathname}` wrapper in `AppShell` so page
+  content replays it on each client navigation; nav items / drawer / backdrop use plain
+  `transition-colors` / `transition-transform`. A `prefers-reduced-motion: reduce` block in
+  `globals.css` kills `route-fade` and clamps every transition/animation to ~0.
+- **Login** rebuilt as the one deliberate hero moment: white card, deepest-green top rule (flat,
+  not gradient), the logo mark, mono eyebrow, Playfair wordmark, full-width primary pill.
+- **Custom logo** (user request). `src/components/layout/logo.tsx` — an inline-SVG "bound
+  ledger" mark: a spine plus three logged entries of decreasing length, on a `rounded` deepest-
+  green tile, glyph in primary green. Colours are theme utilities (`fill-brand-strong` /
+  `fill-success`) so it tracks the palette; `aria-hidden` since the wordmark text sits beside
+  it. Replaces the generic `lucide` `Timer` in the sidebar, the mobile drawer, and login.
+  `src/app/icon.svg` is the same mark with literal hexes (`#061C15` tile / `#B1E09D` glyph) —
+  App Router picks it up as the favicon automatically.
+- **`BackButton`** (`src/components/layout/back-button.tsx`, user request "a back button
+  whenever needed"). Ghost, muted, `ArrowLeft` + "Back"; `router.back()` when
+  `window.history.length > 1`, else `router.push(fallbackHref)`. Added only to `/worklog/[date]`
+  — the one detail route that isn't a sidebar destination — with `fallbackHref="/calendar"` for
+  direct loads. The month page (`/calendar/[month]`) already has Prev/Next and is effectively
+  top-level, so it deliberately doesn't get one.
+- **`prisma.appSettings` "Cannot read properties of undefined (reading 'upsert')" on `/settings`
+  after this pass was the exact stale-client issue CLAUDE.md's "Working Days" note already
+  documents** — a long-running `next dev` process from before `npx prisma generate` never
+  reloaded the regenerated `src/generated/prisma`. Fix is to restart `next dev` (not a code
+  change). If it recurs after any schema/generate step, restart the dev server before suspecting
+  anything else.
+- **Verification:** typecheck, `npm run lint`, and `npx next build` all clean. Vitest: the full
+  run showed 212 passed + 1 worker-pool **startup** timeout on `excel-export.test.ts` under
+  concurrent load (dev server + browser running) — re-ran that file standalone, 21/21 pass; the
+  same parallel-worker-contention flake documented in Phases 7–10, not a regression (this pass
+  changed only classNames, fonts, and colour-map string values — zero logic). Login, Dashboard,
+  Skills, Calendar, Work Log, Reports, and the Add Task dialog all spot-checked in a real
+  authenticated browser session. `date-fns`-style caveat: the browser tool's viewport scaling
+  was flaky this session, so exact responsive/mobile rendering is **not** re-verified — the
+  Tailwind breakpoints are unchanged from prior passes.
+
 ## 3. Key Architectural Decisions & Open Items
 
 - **Database: Neon Postgres, two connection strings, configured the Prisma 7 way.** Provisioned

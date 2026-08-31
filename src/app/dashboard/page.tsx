@@ -59,8 +59,9 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         icon={LayoutDashboard}
+        eyebrow={formatDisplayDate(today)}
         title="Dashboard"
-        description={formatDisplayDate(today)}
+        description="Where today stands, this week's and this month's totals, and your last ten work days."
       />
       <TodayWorkCard workDay={todayWorkDay} />
 
@@ -111,7 +112,6 @@ export default async function DashboardPage() {
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <CalendarCheck2 className="text-link size-5" />
           Recent Work Days
         </h2>
         <RecentWorkDaysTable workDays={recentWorkDays} />

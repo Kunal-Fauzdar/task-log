@@ -16,7 +16,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
+    <form action={formAction} className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">Password</Label>
         <Input
@@ -35,7 +35,7 @@ export function LoginForm() {
           {state.message}
         </p>
       )}
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? "Signing in…" : "Sign In"}
       </Button>
     </form>

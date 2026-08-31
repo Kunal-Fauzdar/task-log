@@ -35,7 +35,7 @@ export function TaskTable({
   onMove: (task: TaskRecord, direction: "up" | "down") => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>

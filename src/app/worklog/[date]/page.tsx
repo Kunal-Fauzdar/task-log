@@ -4,6 +4,7 @@ import { findOrCreateWorkDayByDate } from "@/lib/data/workday";
 import { listSkills } from "@/lib/data/skill";
 import { parseDateOnly } from "@/lib/domain/date";
 import { calculateNetWorkSeconds } from "@/lib/domain/workday";
+import { BackButton } from "@/components/layout/back-button";
 import { TimeTrackingCard } from "@/components/workday/time-tracking-card";
 import { WorkDayHeader } from "@/components/workday/workday-header";
 import { TaskSection } from "@/components/task/task-section";
@@ -30,6 +31,7 @@ export default async function WorkLogDayPage({
 
   return (
     <div className="flex flex-col gap-5">
+      <BackButton fallbackHref="/calendar" />
       <WorkDayHeader workDay={workDay} dateParam={dateParam} />
       <TimeTrackingCard workDay={workDay} dateParam={dateParam} />
       <TaskSection

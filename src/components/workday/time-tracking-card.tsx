@@ -105,10 +105,10 @@ export function TimeTrackingCard({
   const statusKey = workDay.status as keyof typeof WORK_DAY_STATUS_LABELS;
 
   return (
-    <section className="border-border bg-card border-l-primary flex flex-col gap-3.5 rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
+    <section className="border-border bg-card flex flex-col gap-3.5 rounded-lg border border-l-2 border-l-accent p-5">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+          <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
             <Clock className="size-4" />
           </span>
           Time Tracking

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Search, Sparkles } from "lucide-react";
+import { Plus, Search, GraduationCap } from "lucide-react";
 
 import { deleteSkillAction } from "@/lib/actions/skill-actions";
 import {
@@ -100,7 +100,7 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
+        <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
           No skills match your search.
         </p>
       )}
@@ -116,7 +116,7 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
                     SKILL_CATEGORY_ICON_CLASS[group.category],
                   )}
                 >
-                  <Sparkles className="size-3.5" />
+                  <GraduationCap className="size-3.5" />
                 </span>
                 {SKILL_CATEGORY_LABELS[group.category]}{" "}
                 <span className="text-muted-foreground text-sm font-normal">

@@ -13,152 +13,166 @@ import {
   NotebookPen,
   Settings as SettingsIcon,
   ChartColumn,
-  Sparkles,
-  Timer,
+  GraduationCap,
   X,
 } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth-actions";
+import { Logo } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/worklog", label: "Work Log", icon: NotebookPen },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/skills", label: "Skills", icon: Sparkles },
+  { href: "/skills", label: "Skills", icon: GraduationCap },
   { href: "/reports", label: "Reports", icon: ChartColumn },
   { href: "/export", label: "Export", icon: FileDown },
   { href: "/import", label: "Import", icon: FileUp },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
+function Wordmark() {
+  return (
+    <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
+      <Logo className="size-8" />
+      <span className="text-sm font-semibold tracking-tight">WorkLog Manager</span>
+    </Link>
+  );
+}
+
+function NavList({
+  isActiveHref,
+  onNavigate,
+}: {
+  isActiveHref: (href: string) => boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {NAV_ITEMS.map((item) => {
+        const Icon = item.icon;
+        const active = isActiveHref(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
+              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+              active
+                ? "bg-secondary text-foreground font-semibold after:absolute after:top-1/2 after:left-0 after:h-5 after:w-0.5 after:-translate-y-1/2 after:rounded-full after:bg-accent"
+                : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground font-medium",
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close the mobile panel on every route change (a Link click always changes pathname, even
-  // when navigating to the page already shown) — same "adjust state during render" pattern used
-  // elsewhere in this app (TimeTrackingCard, WorkDayHeader — see CLAUDE.md §3) rather than an
-  // effect + setState, which would trip react-hooks/set-state-in-effect and cost an extra render.
+  // Close the mobile drawer on every route change — "adjust state during render" pattern
+  // (CLAUDE.md §3), not effect + setState.
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (pathname !== prevPathname) {
     setPrevPathname(pathname);
     setMobileOpen(false);
   }
 
-  // The login page is its own full-screen layout — showing nav (all of it unreachable pre-auth
-  // anyway, per src/proxy.ts) would just be noise.
-  if (pathname === "/login") return null;
-
   function isActiveHref(href: string) {
     return pathname === href || pathname?.startsWith(`${href}/`);
   }
 
   return (
-    <header className="bg-background/85 sticky top-0 z-40 shadow-xs backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-          <span className="from-primary to-accent text-primary-foreground flex size-7 items-center justify-center rounded-lg bg-gradient-to-br shadow-sm shadow-primary/30">
-            <Timer className="size-4" />
-          </span>
-          <span className="text-gradient-brand hidden sm:inline">WorkLog Manager</span>
-        </Link>
-
-        {/* Desktop/tablet nav — a horizontal bar fits comfortably at md+ widths; overflow-x-auto
-            stays as a safety net rather than the primary interaction pattern it used to be, and
-            no-scrollbar keeps that fallback from ever showing a visible scrollbar track. */}
+    <>
+      {/* Desktop: fixed vertical sidebar. */}
+      <aside className="border-border bg-background fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r lg:flex">
+        <div className="border-border flex h-16 items-center border-b px-5">
+          <Wordmark />
+        </div>
         <nav
           aria-label="Primary"
-          className="no-scrollbar hidden flex-1 items-center gap-0.5 overflow-x-auto md:flex"
+          className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3"
         >
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={isActiveHref(item.href) ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
-                  "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-                  isActiveHref(item.href)
-                    ? "bg-primary/10 text-link"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+          <NavList isActiveHref={isActiveHref} />
         </nav>
-        <form action={logoutAction} className="hidden md:block">
+        <form action={logoutAction} className="border-border border-t p-3">
           <button
             type="submit"
-            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
           >
             <LogOut className="size-4" />
-            <span className="hidden sm:inline">Log Out</span>
+            Log Out
           </button>
         </form>
+      </aside>
 
-        {/* Mobile nav trigger — below md, a horizontally-scrolling tab bar is a weak, undiscoverable
-            primary-navigation pattern, so narrow viewports get a proper menu instead. */}
-        <button
-          type="button"
-          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring ml-auto flex size-9 items-center justify-center rounded-md transition-colors focus-visible:ring-2 focus-visible:outline-none md:hidden"
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen((open) => !open)}
-        >
-          {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
-      </div>
-      <div className="from-primary to-accent h-1 bg-gradient-to-r" />
+      {/* Mobile: top bar + slide-in drawer. */}
+      <header className="border-border bg-background sticky top-0 z-40 border-b lg:hidden">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+          <Wordmark />
+          <button
+            type="button"
+            className="border-border text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
+      </header>
 
-      {mobileOpen && (
-        <>
+      {/* Drawer backdrop */}
+      <button
+        type="button"
+        aria-label="Close menu"
+        tabIndex={-1}
+        onClick={() => setMobileOpen(false)}
+        className={cn(
+          "bg-foreground/20 fixed inset-0 z-40 transition-opacity duration-200 lg:hidden",
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
+      <div
+        className={cn(
+          "border-border bg-background fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-transform duration-200 ease-out lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className="border-border flex h-16 items-center justify-between border-b px-5">
+          <Wordmark />
           <button
             type="button"
             aria-label="Close menu"
-            tabIndex={-1}
-            className="fixed inset-0 top-14 z-30 bg-black/20 md:hidden"
             onClick={() => setMobileOpen(false)}
-          />
-          <div className="border-border bg-background absolute inset-x-0 top-full z-40 border-b p-2 shadow-lg md:hidden">
-            <nav aria-label="Primary mobile" className="flex flex-col gap-0.5">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={isActiveHref(item.href) ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                      isActiveHref(item.href)
-                        ? "bg-primary/10 text-link"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <form action={logoutAction} className="border-border mt-1 border-t pt-1">
-                <button
-                  type="submit"
-                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
-                >
-                  <LogOut className="size-4" />
-                  Log Out
-                </button>
-              </form>
-            </nav>
-          </div>
-        </>
-      )}
-    </header>
+            className="text-muted-foreground hover:text-foreground flex size-8 items-center justify-center rounded-md transition-colors"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        <nav aria-label="Primary mobile" className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
+          <NavList isActiveHref={isActiveHref} onNavigate={() => setMobileOpen(false)} />
+        </nav>
+        <form action={logoutAction} className="border-border border-t p-3">
+          <button
+            type="submit"
+            className="text-muted-foreground hover:bg-secondary hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+          >
+            <LogOut className="size-4" />
+            Log Out
+          </button>
+        </form>
+      </div>
+    </>
   );
 }

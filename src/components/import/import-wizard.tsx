@@ -206,14 +206,14 @@ export function ImportWizard() {
       {(stage === "preview" || stage === "importing") && (
         <section className="flex flex-col gap-2.5">
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <FileUp className="text-accent size-5" />
+            <FileUp className="text-link size-5" />
             Preview
           </h2>
           <p className="text-sm text-muted-foreground">
             Existing days are never overwritten — duplicates and invalid rows are unchecked by
             default. Review the selection, then confirm.
           </p>
-          <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>

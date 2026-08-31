@@ -27,7 +27,7 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
   return (
     <section className="border-border bg-card flex flex-col gap-3.5 rounded-lg border p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+        <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
           <CalendarCog className="size-4" />
         </span>
         <div>

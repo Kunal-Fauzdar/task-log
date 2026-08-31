@@ -42,8 +42,8 @@ export default async function CalendarMonthPage({
     <div className="flex flex-col gap-3.5">
       <PageHeader
         icon={CalendarDays}
+        eyebrow="Month"
         title={formatMonthLabel(monthStart)}
-        accent="teal"
         actions={
           <>
             <Button asChild variant="outline" size="sm">
@@ -60,18 +60,18 @@ export default async function CalendarMonthPage({
         }
       />
 
-      <div className="border-border bg-card flex flex-wrap gap-4 rounded-lg border px-3 py-2 text-xs shadow-sm">
+      <div className="border-border bg-card flex flex-wrap gap-4 rounded-lg border px-3 py-2 text-xs">
         <span className="flex items-center gap-1.5">
-          <span className="border-success bg-success/15 size-3 rounded-sm border" /> Work recorded
+          <span className="border-success bg-success/35 size-3 rounded-sm border" /> Work recorded
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="border-warning bg-warning/15 size-3 rounded-sm border" /> Incomplete
+          <span className="border-accent bg-accent/25 size-3 rounded-sm border" /> In progress
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="border-primary/40 bg-primary/10 size-3 rounded-sm border" /> Holiday
+          <span className="border-brand-strong bg-brand-strong size-3 rounded-sm border" /> Holiday
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="border-border size-3 rounded-sm border" /> No record
+          <span className="border-border bg-card size-3 rounded-sm border" /> No record
         </span>
       </div>
 

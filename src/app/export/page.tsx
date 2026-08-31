@@ -7,7 +7,12 @@ import { ExportRangeForm } from "@/components/export/export-range-form";
 export default function ExportPage() {
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={FileDown} title="Export" description="Download your work log as an .xlsx file." />
+      <PageHeader
+        icon={FileDown}
+        eyebrow="Spreadsheet"
+        title="Export"
+        description="Download a day, a month, or a custom range as a formatted .xlsx file."
+      />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex flex-col gap-4">
@@ -17,7 +22,7 @@ export default function ExportPage() {
 
         <aside className="border-border bg-card flex h-fit flex-col gap-3 rounded-lg border p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <Info className="text-info size-4" />
+            <Info className="text-link size-4" />
             What&apos;s in the file
           </h2>
           <ul className="text-muted-foreground flex flex-col gap-2 text-sm">

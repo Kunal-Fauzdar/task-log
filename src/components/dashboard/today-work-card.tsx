@@ -22,11 +22,8 @@ type TodayWorkDay = {
 export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   if (!workDay) {
     return (
-      <section className="border-border bg-card border-l-primary rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
+      <section className="border-border bg-card rounded-lg border border-l-2 border-l-accent p-5">
         <div className="flex items-center gap-2">
-          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
-            <Briefcase className="size-4" />
-          </span>
           <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
         </div>
         <p className="text-muted-foreground mt-2 text-sm">No work recorded yet today.</p>
@@ -44,10 +41,10 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   const totalTaskSeconds = calculateTotalTaskSeconds(workDay.tasks);
 
   return (
-    <section className="border-border bg-card border-l-primary rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
+    <section className="border-border bg-card rounded-lg border border-l-2 border-l-accent p-5">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+          <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
             <Briefcase className="size-4" />
           </span>
           <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>

@@ -8,9 +8,9 @@ export default function ImportPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         icon={FileUp}
+        eyebrow="Spreadsheet"
         title="Import"
-        description="Bring a previously exported WorkLog .xlsx file back in."
-        accent="teal"
+        description="Bring a previously exported WorkLog .xlsx file back in. Existing days are never overwritten."
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -18,7 +18,7 @@ export default function ImportPage() {
 
         <aside className="border-border bg-card flex h-fit flex-col gap-3 rounded-lg border p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <ShieldCheck className="text-accent size-4" />
+            <ShieldCheck className="text-link size-4" />
             How it works
           </h2>
           <ul className="text-muted-foreground flex flex-col gap-2 text-sm">

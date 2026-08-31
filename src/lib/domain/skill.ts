@@ -33,25 +33,23 @@ export const SKILL_CATEGORY_ORDER: SkillCategory[] = [
   SkillCategory.MORE_THAN_70,
 ];
 
-// Traffic-light convention (red -> amber -> green) for the proficiency progress bar and
-// category headers — reuses the same semantic tokens as the rest of the app (destructive for
-// "needs work", warning for "developing", success for "strong") rather than inventing a
-// skill-specific palette.
+// A monochrome proficiency ramp instead of a red/amber/green stoplight: neutral grey-green for
+// "needs work", sage for "developing", bright green for "strong". Flat fills, no gradients.
 export const SKILL_CATEGORY_PROGRESS_CLASS: Record<SkillCategory, string> = {
-  LESS_THAN_30: "bg-gradient-to-r from-destructive to-destructive/70",
-  BETWEEN_30_70: "bg-gradient-to-r from-warning to-warning/70",
-  MORE_THAN_70: "bg-gradient-to-r from-success to-success/70",
+  LESS_THAN_30: "bg-muted-foreground/45",
+  BETWEEN_30_70: "bg-accent",
+  MORE_THAN_70: "bg-success",
 };
 
 export const SKILL_CATEGORY_ICON_CLASS: Record<SkillCategory, string> = {
-  LESS_THAN_30: "bg-gradient-to-br from-destructive/25 to-destructive/10 text-destructive",
-  BETWEEN_30_70: "bg-gradient-to-br from-warning/30 to-warning/10 text-warning-foreground",
-  MORE_THAN_70: "bg-gradient-to-br from-success/25 to-success/10 text-success",
+  LESS_THAN_30: "bg-muted text-muted-foreground",
+  BETWEEN_30_70: "bg-accent/20 text-foreground",
+  MORE_THAN_70: "bg-success/25 text-success-foreground",
 };
 
 export const SKILL_CATEGORY_BORDER_CLASS: Record<SkillCategory, string> = {
-  LESS_THAN_30: "border-l-destructive",
-  BETWEEN_30_70: "border-l-warning",
+  LESS_THAN_30: "border-l-muted-foreground/40",
+  BETWEEN_30_70: "border-l-accent",
   MORE_THAN_70: "border-l-success",
 };
 

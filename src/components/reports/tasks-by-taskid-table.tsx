@@ -12,14 +12,14 @@ import {
 export function TasksByTaskIdTable({ rows }: { rows: TasksByTaskId[] }) {
   if (rows.length === 0) {
     return (
-      <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
+      <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
         No tasks in this range.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>

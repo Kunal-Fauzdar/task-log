@@ -6,14 +6,13 @@ import { cn } from "@/lib/utils";
 
 const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Flat state fills on the app's green ramp — sage (in progress), bright green (completed),
+// deepest green (holiday). Redundant with the per-status icon below, not reliant on hue alone.
 const STATUS_STYLES: Record<string, string> = {
-  NOT_STARTED: "border-border",
-  IN_PROGRESS:
-    "border-warning bg-gradient-to-br from-warning/20 to-warning/5 text-warning-foreground font-medium",
-  COMPLETED:
-    "border-success bg-gradient-to-br from-success/20 to-success/5 text-success font-medium",
-  HOLIDAY:
-    "border-primary/40 bg-gradient-to-br from-primary/15 to-accent/10 text-link font-medium",
+  NOT_STARTED: "bg-card border-border",
+  IN_PROGRESS: "bg-accent/25 border-accent text-foreground font-medium",
+  COMPLETED: "bg-success/35 border-success text-success-foreground font-medium",
+  HOLIDAY: "bg-brand-strong border-brand-strong text-brand-strong-foreground font-medium",
 };
 
 // A small icon per status, redundant with (not a replacement for) the color coding — keeps the
@@ -79,15 +78,14 @@ export function CalendarGrid({
               key={dateParam}
               href={`/worklog/${dateParam}`}
               className={cn(
-                // A light frosted-glass base (bg-card/35 + backdrop-blur) sits under every cell,
-                // status-colored or not — without it, a plain "no record" cell has nothing behind
-                // the day number but the busy background image, which hurt legibility badly on
-                // exactly the cells with the least other visual weight to compensate.
-                "bg-card/35 flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border text-sm backdrop-blur-sm transition-all hover:shadow-sm hover:brightness-95 dark:hover:brightness-125",
+                "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border text-sm transition-colors",
                 workDay
                   ? STATUS_STYLES[workDay.status]
-                  : cn("hover:bg-accent", isWeekendCol ? "border-border/60" : "border-border"),
-                isToday && "ring-primary ring-2 ring-offset-1",
+                  : cn(
+                      "hover:border-accent hover:bg-secondary",
+                      isWeekendCol ? "bg-muted/50 border-border/60" : "bg-card border-border",
+                    ),
+                isToday && "ring-ring ring-2 ring-offset-2 ring-offset-background",
               )}
             >
               {day}

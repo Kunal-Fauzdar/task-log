@@ -9,7 +9,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader icon={SettingsIcon} title="Settings" />
+      <PageHeader
+        icon={SettingsIcon}
+        eyebrow="Configuration"
+        title="Settings"
+        description="Which weekdays count as working days. Exports use this to show a row for every expected day."
+      />
       <WorkingDaysForm workingDays={workingDays} />
     </div>
   );

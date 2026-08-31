@@ -3,7 +3,7 @@ import {
   Briefcase,
   CalendarRange,
   ClipboardList,
-  Sparkles,
+  GraduationCap,
 } from "lucide-react";
 
 import { listWorkDays } from "@/lib/data/workday";
@@ -74,16 +74,16 @@ export default async function ReportsPage({
     <div className="flex flex-col gap-5">
       <PageHeader
         icon={BarChart3}
+        eyebrow="Summaries"
         title="Reports"
-        description="Work, task, and skill summaries for a date range."
-        accent="cyan"
+        description="Work, task, and skill totals for a date range. Defaults to the current month."
       />
 
       <ReportDateFilterForm from={formatDateOnly(range.from)} to={formatDateOnly(range.to)} />
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <Briefcase className="text-info size-5" />
+          <Briefcase className="text-link size-5" />
           Work Summary
         </h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -116,7 +116,7 @@ export default async function ReportsPage({
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <ClipboardList className="text-accent size-5" />
+          <ClipboardList className="text-link size-5" />
           Task Summary
         </h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -136,7 +136,7 @@ export default async function ReportsPage({
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <Sparkles className="text-link size-5" />
+          <GraduationCap className="text-link size-5" />
           Skill Usage
         </h2>
         <SkillUsageTable rows={skillUsage} />
@@ -144,7 +144,7 @@ export default async function ReportsPage({
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <CalendarRange className="text-accent size-5" />
+          <CalendarRange className="text-link size-5" />
           Monthly Summary
         </h2>
         <MonthlySummaryTable rows={monthlySummary} />

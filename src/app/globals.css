@@ -2,84 +2,81 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --radius: 0.75rem;
-  --background: oklch(0.99 0.002 264);
-  --foreground: oklch(0.18 0.02 264);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 264);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 264);
-  --primary: oklch(0.5 0.22 264);
-  --primary-foreground: oklch(0.99 0.005 264);
-  --secondary: oklch(0.96 0.008 264);
-  --secondary-foreground: oklch(0.28 0.03 264);
-  --muted: oklch(0.96 0.008 264);
-  --muted-foreground: oklch(0.5 0.02 264);
-  --accent: oklch(0.94 0.025 264);
-  --accent-foreground: oklch(0.32 0.05 264);
-  --destructive: oklch(0.577 0.22 25);
-  --border: oklch(0.9 0.008 264);
-  --input: oklch(0.9 0.008 264);
-  --ring: oklch(0.5 0.2 264 / 45%);
-  --success: oklch(0.6 0.14 152);
-  --success-foreground: oklch(0.99 0.005 152);
-  --warning: oklch(0.77 0.15 70);
-  --warning-foreground: oklch(0.28 0.06 70);
-  --info: oklch(0.58 0.14 237);
-  --info-foreground: oklch(0.99 0.005 237);
-}
+/*
+  Theme rebuilt on the supplied "Aether" reference (design.md + Screenshot 1 / Screenshot 2):
+  a single light theme — a pale green canvas, near-black-green ink, white paper surfaces.
 
-/* Dark is this app's only real theme in practice (forced via a `dark` class on <html> — see
-   layout.tsx) — a single user's personal tool, not a light/dark toggle product. Tokens below are
-   taken directly from design.md (a supplied reference design system), not approximated: primary
-   #2B44D1, accent #435EF0, background #050510, surface (card) #161F45, text-primary #FFFFFF,
-   text-secondary #A1A1AA, border #27272A. Roles design.md doesn't define (secondary/muted
-   surfaces, semantic success/warning/destructive) are derived to stay consistent with that
-   palette's depth and restraint rather than invented from scratch. `:root` above stays as a light
-   fallback in case a toggle is ever added later; it isn't reachable today. */
-.dark {
-  /* Tells the browser to render native controls (date-picker calendar, scrollbars) in their dark
-     variant — without this they render light-themed by default regardless of the app's own
-     palette, which looks broken rather than intentional. */
-  color-scheme: dark;
+  Palette is intentionally almost monochrome. design.md gives:
+    primary  #B1E09D   (light green)   — "done" / brand accent fills
+    surface  #061C15   (deepest green) — the strongest emphasis, holiday days, the header
+    accent   #82A89C   (sage)          — "in progress" / secondary emphasis
+    border   #D1DEDC                   — hairlines
+    text     #111827 / #4B5563         — primary / secondary ink
+
+  Six work-day / skill / task states have to stay distinguishable, so the greens are used as a
+  deliberate ramp — neutral grey-green -> sage -> bright green -> deepest green — and TWO earthy
+  off-green signals are reserved *only* for warning (amber) and destructive (brick). Those two
+  are a genuine usability need (a delete button must not read as "completed", an over-budget
+  warning must not read as "fine"); they're kept muted and earthy so they belong to an organic
+  palette rather than a stoplight.
+
+  No dark theme. Single-user personal tool, no toggle — same "no unnecessary configurability"
+  bias the rest of the app follows.
+*/
+:root {
+  /* design.md: card & control radius 14px. */
   --radius: 0.875rem;
-  --background: #050510;
-  --foreground: #ffffff;
-  --card: #161f45;
-  --card-foreground: #ffffff;
-  --popover: #161f45;
-  --popover-foreground: #ffffff;
-  --primary: #2b44d1;
-  --primary-foreground: #ffffff;
-  --secondary: #10142c;
-  --secondary-foreground: #ffffff;
-  --muted: #10142c;
-  --muted-foreground: #a1a1aa;
-  --accent: #435ef0;
-  --accent-foreground: #ffffff;
-  --destructive: #e5484d;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #2b44d1;
-  --success: #2fbe7b;
-  --success-foreground: #062617;
-  --warning: #d9a441;
-  --warning-foreground: #2b1d06;
-  --info: #435ef0;
-  --info-foreground: #ffffff;
-  /* `--primary` (#2b44d1) is tuned to work as a filled background (white text on it is very
-     legible) — but used as plain colored TEXT/icon color on a dark surface, it measures well
-     under WCAG AA contrast (~2.2:1 against --card, ~3:1 against --accent-tinted icon badges —
-     verified by computing relative luminance directly, not eyeballed). `--link` is the same hue
-     family, lightened specifically for that role: text links, active-nav text, icon-badge glyphs,
-     anywhere blue renders as foreground color rather than a fill. ~6.3:1 against --card. */
-  --link: #60a5fa;
+
+  --background: #e8f0e2;
+  --foreground: #0d1f17;
+
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  /* Primary action = the deepest green (Screenshot 2's near-black "Observe" pill). */
+  --primary: #14281f;
+  --primary-foreground: #eef4e9;
+
+  /* Soft green chip / secondary-button surface. */
+  --secondary: #d7e6cf;
+  --secondary-foreground: #1f3a2c;
+
+  --muted: #dde9d6;
+  --muted-foreground: #4b5563;
+
+  /* design.md accent — sage. Used for "in progress" and hover surfaces. */
+  --accent: #82a89c;
+  --accent-foreground: #0d1f17;
+
+  --border: #c6d8bf;
+  --input: #c1d4b9;
+  --ring: #6f9a8c;
+
+  /* --- semantic state ------------------------------------------------------ */
+  /* Completed / positive — design.md primary green. */
+  --success: #b1e09d;
+  --success-foreground: #16301f;
+  /* Deepest green — holiday days, the strongest badge. design.md surface token. */
+  --brand-strong: #061c15;
+  --brand-strong-foreground: #dbe9d3;
+  /* Warning (duration over budget) — muted amber, earthy not neon. */
+  --warning: #b07d1a;
+  --warning-foreground: #fbf4e6;
+  /* Destructive (delete) — muted brick. */
+  --destructive: #9a3324;
+  --destructive-foreground: #fbeeeb;
+
+  /* Readable green for text links / colored glyphs on white (~5.4:1 on --card). */
+  --link: #1f5c43;
 }
 
 @theme inline {
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
   --font-mono: var(--font-mono);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -95,18 +92,18 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-strong-foreground: var(--brand-strong-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
   --color-link: var(--link);
-  /* design.md: card & control radius 14px, pill (badges, fully-round controls) stays Tailwind's
-     built-in `rounded-full`, unaffected by this scale. */
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -119,37 +116,54 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    /* One quiet directional wash from the paler top edge into the canvas green — no image, no
+       blobs, no mesh. Just enough to keep a tall empty page from reading as a flat fill. */
+    background-image: linear-gradient(180deg, #eef4e9 0%, var(--background) 340px);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
-  .dark body {
-    /* User-supplied background.jpg (an abstract blue fluid/marble texture) as the page backdrop,
-       with a diagonal black → purple → black wash layered on top — the wash is what pulls the
-       photo (blue-only) into this app's actual blue/purple/black palette, and darkens it enough
-       that card surfaces and body text stay legible over it. Gradient layers are listed first
-       because in CSS multiple background-image, earlier layers paint on top of later ones. */
-    background-image:
-      linear-gradient(165deg, rgba(5, 5, 16, 0.9) 0%, rgba(56, 20, 120, 0.55) 45%, rgba(5, 5, 16, 0.92) 100%),
-      url("/background.jpg");
-    background-size: cover, cover;
-    background-position: center, center;
-    background-repeat: no-repeat, no-repeat;
-    background-attachment: fixed, fixed;
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.011em;
   }
-  h1, h2, h3, h4 {
+}
+
+@layer components {
+  /* "Display moment" type — Playfair Display italic. Page-header titles and the work-day date
+     headline only; never body or section headings. */
+  .font-display {
+    font-family: var(--font-display), Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* Section eyebrow — the small tracked mono kicker above a heading (Screenshot 1's
+     "ARCHITECTURAL STEWARDSHIP"). */
+  .eyebrow {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /* design.md label-md: JetBrains Mono, technical metadata — Task IDs, ISO dates. */
+  .label-mono {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: -0.01em;
-  }
-  /* design.md label-md: JetBrains Mono, 12px/600 — used for short technical labels (Task IDs,
-     status pills), not body copy. */
-  .label-mono {
-    @apply font-mono text-xs font-semibold tracking-tight;
   }
 }
 
 @layer utilities {
-  /* Keeps a container's horizontal scroll functional (still scrollable by drag/trackpad/keyboard)
-     while hiding the visible scrollbar track — used on the header nav, where `overflow-x-auto` is
-     a narrow-viewport safety net, not something that should show a permanent scrollbar UI on
-     screens where it barely triggers. */
+  /* Keeps a container horizontally scrollable on narrow widths without painting a scrollbar. */
   .no-scrollbar {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -158,10 +172,31 @@
     display: none;
   }
 
-  /* Gradient wordmark / hero-title treatment — used sparingly (the header logo, the login
-     headline) rather than on every heading, which would fight the app's own semantic-color
-     coding for status. Primary → accent only, matching design.md's two-blue palette. */
-  .text-gradient-brand {
-    @apply from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent;
+  /* Very small, restrained motion only. Page content plays a short fade+rise on each route
+     change (keyed in AppShell); anything that needs to move otherwise uses a plain colour or
+     transform transition. Fully disabled under prefers-reduced-motion. */
+  .route-fade {
+    animation: route-fade 0.22s ease-out both;
+  }
+  @keyframes route-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .route-fade {
+      animation: none;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
 }

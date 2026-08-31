@@ -46,15 +46,16 @@ export const WORK_DAY_STATUS_LABELS: Record<WorkDayStatus, string> = {
 
 // Shared Badge `variant` per status — same reasoning as WORK_DAY_STATUS_LABELS above, kept in
 // sync so every place that shows a status badge (Dashboard's Today's Work card and Recent Work
-// Days table so far) reads the same color the same way.
+// Days table so far) reads the same color the same way. The four values walk the app's green
+// ramp: hairline -> sage -> bright green -> deepest green.
 export const WORK_DAY_STATUS_BADGE_VARIANT: Record<
   WorkDayStatus,
-  "outline" | "warning" | "success" | "secondary"
+  "outline" | "accent" | "success" | "brand"
 > = {
   NOT_STARTED: "outline",
-  IN_PROGRESS: "warning",
+  IN_PROGRESS: "accent",
   COMPLETED: "success",
-  HOLIDAY: "secondary",
+  HOLIDAY: "brand",
 };
 
 // Derives the stored WorkDayStatus enum from the fields that determine it. Holiday always

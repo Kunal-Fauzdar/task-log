@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 
 import { listSkills } from "@/lib/data/skill";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,10 +10,10 @@ export default async function SkillsPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        icon={Sparkles}
+        icon={GraduationCap}
+        eyebrow="Proficiency"
         title="SkillMap"
-        description="Track proficiency across every skill you use."
-        accent="violet"
+        description="Every skill you use, grouped into three proficiency bands, with a record of how each has changed."
       />
       <SkillMap skills={skills} />
     </div>
