@@ -1,12 +1,11 @@
 "use client";
 
 import { Fragment, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, File, FileUp, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -30,8 +29,8 @@ function groupTotalSeconds(group: PreviewGroup): number {
 
 function statusBadge(group: PreviewGroup) {
   if (group.errors.length > 0) return <Badge variant="destructive">Invalid</Badge>;
-  if (group.isDuplicate) return <Badge variant="secondary">Already exists</Badge>;
-  return <Badge variant="outline">New</Badge>;
+  if (group.isDuplicate) return <Badge variant="warning">Already exists</Badge>;
+  return <Badge variant="success">New</Badge>;
 }
 
 export function ImportWizard() {
@@ -42,6 +41,7 @@ export function ImportWizard() {
   const [rowErrors, setRowErrors] = useState<ImportRowError[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [result, setResult] = useState<ImportOutcome | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   function reset() {
     setStage("idle");
@@ -50,6 +50,7 @@ export function ImportWizard() {
     setRowErrors([]);
     setSelected(new Set());
     setResult(null);
+    setFileName(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -118,9 +119,12 @@ export function ImportWizard() {
 
   if (stage === "done" && result) {
     return (
-      <section className="flex flex-col gap-4 rounded-lg border p-6">
-        <h2 className="text-lg font-semibold tracking-tight">Import complete</h2>
-        <ul className="text-sm text-muted-foreground flex flex-col gap-1">
+      <section className="border-success/30 bg-success/5 flex flex-col gap-4 rounded-lg border p-6 shadow-sm">
+        <h2 className="text-success flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <CheckCircle2 className="size-5" />
+          Import complete
+        </h2>
+        <ul className="text-muted-foreground flex flex-col gap-1 text-sm">
           <li>{result.importedCount} day(s) imported.</li>
           {result.skippedDuplicates.length > 0 && (
             <li>
@@ -136,33 +140,61 @@ export function ImportWizard() {
           )}
         </ul>
         <Button onClick={reset} className="w-fit">
-          Import another file
+          <FileUp /> Import another file
         </Button>
       </section>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <form onSubmit={handleUpload} className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="import-file">WorkLog .xlsx file</Label>
-          <Input id="import-file" name="file" type="file" accept=".xlsx" ref={fileInputRef} />
-        </div>
-        <Button type="submit" disabled={stage === "uploading"}>
-          {stage === "uploading" ? "Reading file…" : "Upload & Preview"}
+    <div className="flex flex-col gap-4">
+      <form
+        onSubmit={handleUpload}
+        className="border-border bg-card flex flex-col gap-3 rounded-lg border p-4 shadow-sm"
+      >
+        <label
+          htmlFor="import-file"
+          className="border-border hover:border-primary/50 hover:bg-accent/40 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition-colors"
+        >
+          <span className="bg-primary/10 text-link flex size-10 items-center justify-center rounded-full">
+            <File className="size-5" />
+          </span>
+          {fileName ? (
+            <span className="text-sm font-medium">{fileName}</span>
+          ) : (
+            <>
+              <span className="text-sm font-medium">Choose a WorkLog .xlsx file</span>
+              <span className="text-muted-foreground text-xs">or drag and drop it here</span>
+            </>
+          )}
+          <input
+            id="import-file"
+            name="file"
+            type="file"
+            accept=".xlsx"
+            ref={fileInputRef}
+            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            className="sr-only"
+          />
+        </label>
+        <Button type="submit" disabled={stage === "uploading"} className="self-start">
+          <Upload /> {stage === "uploading" ? "Reading file…" : "Upload & Preview"}
         </Button>
       </form>
 
       {error && (
-        <p className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+        <p className="border-destructive/50 bg-destructive/10 text-destructive flex items-start gap-2 rounded-md border p-3 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error}
         </p>
       )}
 
       {rowErrors.length > 0 && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          <p className="font-medium">{rowErrors.length} row(s) could not be read:</p>
+        <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="size-4" />
+            {rowErrors.length} row(s) could not be read:
+          </p>
           <ul className="mt-1 list-inside list-disc">
             {rowErrors.map((rowError) => (
               <li key={rowError.rowNumber}>{rowError.message}</li>
@@ -172,13 +204,16 @@ export function ImportWizard() {
       )}
 
       {(stage === "preview" || stage === "importing") && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">Preview</h2>
+        <section className="flex flex-col gap-2.5">
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <FileUp className="text-accent size-5" />
+            Preview
+          </h2>
           <p className="text-sm text-muted-foreground">
             Existing days are never overwritten — duplicates and invalid rows are unchecked by
             default. Review the selection, then confirm.
           </p>
-          <div className="overflow-x-auto rounded-lg border">
+          <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -31,7 +31,7 @@ export function TaskTimerControls({
   }
 
   if (task.timerStatus === "COMPLETED") {
-    return <Badge variant="secondary">Completed</Badge>;
+    return <Badge variant="success">Completed</Badge>;
   }
 
   return (

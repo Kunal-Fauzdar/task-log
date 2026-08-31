@@ -9,10 +9,10 @@ test("calendar redirects to the current month and supports prev/next navigation"
   const currentMonth = getLocalMonth(new Date());
   await expect(page).toHaveURL(new RegExp(`/calendar/${currentMonth}$`));
 
-  await page.getByRole("link", { name: "← Prev" }).click();
+  await page.getByRole("link", { name: "Prev" }).click();
   await expect(page).not.toHaveURL(new RegExp(`/calendar/${currentMonth}$`));
 
-  await page.getByRole("link", { name: "Next →" }).click();
+  await page.getByRole("link", { name: "Next" }).click();
   await expect(page).toHaveURL(new RegExp(`/calendar/${currentMonth}$`));
 });
 

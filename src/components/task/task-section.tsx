@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { AlertTriangle, ListChecks, Plus } from "lucide-react";
 
 import { deleteTaskAction, duplicateTaskAction, moveTaskAction } from "@/lib/actions/task-actions";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
@@ -82,16 +83,19 @@ export function TaskSection({
   }
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold tracking-tight">Tasks</h2>
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <ListChecks className="text-link size-5" />
+          Tasks
+        </h2>
         <Button size="sm" onClick={() => setIsCreating(true)}>
-          + Add Task
+          <Plus /> Add Task
         </Button>
       </div>
 
       {tasks.length === 0 ? (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
           No tasks logged for this day yet.
         </p>
       ) : (
@@ -111,8 +115,9 @@ export function TaskSection({
           {isOverBudget && (
             <p
               role="alert"
-              className="border-warning bg-warning/10 rounded-md border px-3 py-2 text-sm"
+              className="border-warning bg-warning/10 text-warning-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
             >
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               Total task duration ({formatSecondsToDuration(totalSeconds)}) exceeds net work
               duration ({formatSecondsToDuration(Math.max(0, netWorkSeconds ?? 0))}). Task
               durations haven&apos;t been changed — double check they&apos;re accurate.

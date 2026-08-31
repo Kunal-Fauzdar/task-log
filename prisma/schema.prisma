@@ -119,6 +119,22 @@ model TaskSkill {
   @@map("task_skills")
 }
 
+/// Single-row app-wide config (single-user app, no per-user settings — CLAUDE.md §3). Always
+/// read/written via id = "singleton" (see src/lib/data/settings.ts); Prisma has no native
+/// "singleton table" concept, so this is the established pattern for one instead of a bare
+/// key-value table with no shape.
+model AppSettings {
+  id          String   @id @default("singleton")
+  /// Day-of-week numbers, 0 (Sunday) - 6 (Saturday), matching JS's Date#getUTCDay() convention
+  /// already used everywhere else in this codebase (see isWeekend in src/lib/domain/date.ts).
+  /// Drives which blank days a month/range Excel export fills in for days never logged — see
+  /// fillMissingWorkingDays in src/lib/domain/workday.ts.
+  workingDays Int[]    @default([1, 2, 3, 4, 5])
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
 /// Reference calendar of known holidays (national/company), distinct from WorkDay.isHoliday
 /// (the actual recorded status for a day) — see CLAUDE.md §3 for why these are separate.
 model Holiday {

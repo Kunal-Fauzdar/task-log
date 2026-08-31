@@ -12,7 +12,7 @@ test("add a skill, edit its proficiency, see history, then delete it", async ({ 
   await page.goto("/skills");
 
   // Add
-  await page.getByRole("button", { name: "+ Add Skill" }).click();
+  await page.getByRole("button", { name: "Add Skill" }).click();
   await page.getByLabel("Skill name").fill(TEST_SKILL_NAME);
   await page.getByLabel("Proficiency (%)").fill("40");
   await page.getByRole("button", { name: "Save" }).click();

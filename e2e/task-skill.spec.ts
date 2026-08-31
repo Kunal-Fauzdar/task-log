@@ -13,7 +13,7 @@ test.afterEach(async () => {
 test("associating a skill with a task shows it as a badge and persists on edit", async ({ page }) => {
   await page.goto(`/worklog/${TEST_DATE_PARAM}`);
 
-  await page.getByRole("button", { name: "+ Add Task" }).click();
+  await page.getByRole("button", { name: "Add Task" }).click();
   await page.getByLabel("Task ID").fill("T-7001");
   await page.getByLabel("Task description").fill("Task with a skill");
   await page.getByLabel("Duration (H:MM:SS)").fill("1:00:00");

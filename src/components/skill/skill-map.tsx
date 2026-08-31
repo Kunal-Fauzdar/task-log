@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { Plus, Search, Sparkles } from "lucide-react";
 
 import { deleteSkillAction } from "@/lib/actions/skill-actions";
-import { SKILL_CATEGORY_LABELS, SKILL_CATEGORY_ORDER } from "@/lib/domain/skill";
+import {
+  SKILL_CATEGORY_ICON_CLASS,
+  SKILL_CATEGORY_LABELS,
+  SKILL_CATEGORY_ORDER,
+} from "@/lib/domain/skill";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,16 +59,19 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Search skills…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48"
-            aria-label="Search skills"
-          />
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search skills…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-48 pl-8"
+              aria-label="Search skills"
+            />
+          </div>
           <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by category">
             <Button
               type="button"
@@ -86,11 +94,13 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
             ))}
           </div>
         </div>
-        <Button onClick={() => setIsCreating(true)}>+ Add Skill</Button>
+        <Button onClick={() => setIsCreating(true)}>
+          <Plus /> Add Skill
+        </Button>
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
           No skills match your search.
         </p>
       )}
@@ -98,14 +108,22 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
       {groups.map(
         (group) =>
           group.skills.length > 0 && (
-            <section key={group.category} className="flex flex-col gap-3">
-              <h2 className={cn("text-lg font-semibold tracking-tight")}>
+            <section key={group.category} className="flex flex-col gap-2.5">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <span
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    SKILL_CATEGORY_ICON_CLASS[group.category],
+                  )}
+                >
+                  <Sparkles className="size-3.5" />
+                </span>
                 {SKILL_CATEGORY_LABELS[group.category]}{" "}
                 <span className="text-muted-foreground text-sm font-normal">
                   ({group.skills.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {group.skills.map((skill) => (
                   <SkillCard
                     key={skill.id}

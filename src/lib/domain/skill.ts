@@ -33,6 +33,28 @@ export const SKILL_CATEGORY_ORDER: SkillCategory[] = [
   SkillCategory.MORE_THAN_70,
 ];
 
+// Traffic-light convention (red -> amber -> green) for the proficiency progress bar and
+// category headers — reuses the same semantic tokens as the rest of the app (destructive for
+// "needs work", warning for "developing", success for "strong") rather than inventing a
+// skill-specific palette.
+export const SKILL_CATEGORY_PROGRESS_CLASS: Record<SkillCategory, string> = {
+  LESS_THAN_30: "bg-gradient-to-r from-destructive to-destructive/70",
+  BETWEEN_30_70: "bg-gradient-to-r from-warning to-warning/70",
+  MORE_THAN_70: "bg-gradient-to-r from-success to-success/70",
+};
+
+export const SKILL_CATEGORY_ICON_CLASS: Record<SkillCategory, string> = {
+  LESS_THAN_30: "bg-gradient-to-br from-destructive/25 to-destructive/10 text-destructive",
+  BETWEEN_30_70: "bg-gradient-to-br from-warning/30 to-warning/10 text-warning-foreground",
+  MORE_THAN_70: "bg-gradient-to-br from-success/25 to-success/10 text-success",
+};
+
+export const SKILL_CATEGORY_BORDER_CLASS: Record<SkillCategory, string> = {
+  LESS_THAN_30: "border-l-destructive",
+  BETWEEN_30_70: "border-l-warning",
+  MORE_THAN_70: "border-l-success",
+};
+
 // e.g. "75% → 85% (+10%)" for a SkillHistory entry (spec §23).
 export function formatProficiencyChange(fromPercentage: number, toPercentage: number): string {
   const delta = toPercentage - fromPercentage;

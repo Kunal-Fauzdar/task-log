@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Copy, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, ExternalLink, Pencil, Trash2 } from "lucide-react";
 
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +35,7 @@ export function TaskTable({
   onMove: (task: TaskRecord, direction: "up" | "down") => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
       <Table>
         <TableHeader>
           <TableRow>
@@ -50,7 +50,7 @@ export function TaskTable({
         <TableBody>
           {tasks.map((task, index) => (
             <TableRow key={task.id}>
-              <TableCell className="font-medium whitespace-nowrap">{task.taskId}</TableCell>
+              <TableCell className="label-mono whitespace-nowrap">{task.taskId}</TableCell>
               <TableCell className="max-w-md">
                 <p className="whitespace-pre-wrap">{task.description}</p>
                 {task.skills && task.skills.length > 0 && (
@@ -75,14 +75,11 @@ export function TaskTable({
               </TableCell>
               <TableCell>
                 {task.link && (
-                  <a
-                    href={task.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-4"
-                  >
-                    Open
-                  </a>
+                  <Button asChild variant="outline" size="sm">
+                    <a href={task.link} target="_blank" rel="noopener noreferrer">
+                      Open <ExternalLink className="size-3" />
+                    </a>
+                  </Button>
                 )}
               </TableCell>
               <TableCell>

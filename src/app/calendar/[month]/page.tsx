@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { listWorkDays } from "@/lib/data/workday";
 import { addMonths, formatDateOnly, formatMonthLabel, parseMonthOnly } from "@/lib/domain/date";
 import { getMonthRange } from "@/lib/domain/workday";
+import { PageHeader } from "@/components/layout/page-header";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { Button } from "@/components/ui/button";
 
@@ -37,28 +39,36 @@ export default async function CalendarMonthPage({
   const todayParam = formatDateOnly(getServerToday());
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">{formatMonthLabel(monthStart)}</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/calendar/${formatDateOnly(prevMonth).slice(0, 7)}`}>← Prev</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/calendar/${formatDateOnly(nextMonth).slice(0, 7)}`}>Next →</Link>
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-3.5">
+      <PageHeader
+        icon={CalendarDays}
+        title={formatMonthLabel(monthStart)}
+        accent="teal"
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/calendar/${formatDateOnly(prevMonth).slice(0, 7)}`}>
+                <ChevronLeft /> Prev
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/calendar/${formatDateOnly(nextMonth).slice(0, 7)}`}>
+                Next <ChevronRight />
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
+      <div className="border-border bg-card flex flex-wrap gap-4 rounded-lg border px-3 py-2 text-xs shadow-sm">
         <span className="flex items-center gap-1.5">
-          <span className="border-success bg-success/10 size-3 rounded-sm border" /> Work recorded
+          <span className="border-success bg-success/15 size-3 rounded-sm border" /> Work recorded
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="border-warning bg-warning/10 size-3 rounded-sm border" /> Incomplete
+          <span className="border-warning bg-warning/15 size-3 rounded-sm border" /> Incomplete
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="border-secondary-foreground/30 bg-secondary size-3 rounded-sm border" /> Holiday
+          <span className="border-primary/40 bg-primary/10 size-3 rounded-sm border" /> Holiday
         </span>
         <span className="flex items-center gap-1.5">
           <span className="border-border size-3 rounded-sm border" /> No record

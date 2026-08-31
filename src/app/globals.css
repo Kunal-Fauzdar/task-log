@@ -3,53 +3,83 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.99 0.002 264);
+  --foreground: oklch(0.18 0.02 264);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.18 0.02 264);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --success: oklch(0.6 0.15 145);
-  --warning: oklch(0.75 0.16 75);
+  --popover-foreground: oklch(0.18 0.02 264);
+  --primary: oklch(0.5 0.22 264);
+  --primary-foreground: oklch(0.99 0.005 264);
+  --secondary: oklch(0.96 0.008 264);
+  --secondary-foreground: oklch(0.28 0.03 264);
+  --muted: oklch(0.96 0.008 264);
+  --muted-foreground: oklch(0.5 0.02 264);
+  --accent: oklch(0.94 0.025 264);
+  --accent-foreground: oklch(0.32 0.05 264);
+  --destructive: oklch(0.577 0.22 25);
+  --border: oklch(0.9 0.008 264);
+  --input: oklch(0.9 0.008 264);
+  --ring: oklch(0.5 0.2 264 / 45%);
+  --success: oklch(0.6 0.14 152);
+  --success-foreground: oklch(0.99 0.005 152);
+  --warning: oklch(0.77 0.15 70);
+  --warning-foreground: oklch(0.28 0.06 70);
+  --info: oklch(0.58 0.14 237);
+  --info-foreground: oklch(0.99 0.005 237);
 }
 
+/* Dark is this app's only real theme in practice (forced via a `dark` class on <html> — see
+   layout.tsx) — a single user's personal tool, not a light/dark toggle product. Tokens below are
+   taken directly from design.md (a supplied reference design system), not approximated: primary
+   #2B44D1, accent #435EF0, background #050510, surface (card) #161F45, text-primary #FFFFFF,
+   text-secondary #A1A1AA, border #27272A. Roles design.md doesn't define (secondary/muted
+   surfaces, semantic success/warning/destructive) are derived to stay consistent with that
+   palette's depth and restraint rather than invented from scratch. `:root` above stays as a light
+   fallback in case a toggle is ever added later; it isn't reachable today. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --success: oklch(0.7 0.15 145);
-  --warning: oklch(0.8 0.16 75);
+  /* Tells the browser to render native controls (date-picker calendar, scrollbars) in their dark
+     variant — without this they render light-themed by default regardless of the app's own
+     palette, which looks broken rather than intentional. */
+  color-scheme: dark;
+  --radius: 0.875rem;
+  --background: #050510;
+  --foreground: #ffffff;
+  --card: #161f45;
+  --card-foreground: #ffffff;
+  --popover: #161f45;
+  --popover-foreground: #ffffff;
+  --primary: #2b44d1;
+  --primary-foreground: #ffffff;
+  --secondary: #10142c;
+  --secondary-foreground: #ffffff;
+  --muted: #10142c;
+  --muted-foreground: #a1a1aa;
+  --accent: #435ef0;
+  --accent-foreground: #ffffff;
+  --destructive: #e5484d;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #2b44d1;
+  --success: #2fbe7b;
+  --success-foreground: #062617;
+  --warning: #d9a441;
+  --warning-foreground: #2b1d06;
+  --info: #435ef0;
+  --info-foreground: #ffffff;
+  /* `--primary` (#2b44d1) is tuned to work as a filled background (white text on it is very
+     legible) — but used as plain colored TEXT/icon color on a dark surface, it measures well
+     under WCAG AA contrast (~2.2:1 against --card, ~3:1 against --accent-tinted icon badges —
+     verified by computing relative luminance directly, not eyeballed). `--link` is the same hue
+     family, lightened specifically for that role: text links, active-nav text, icon-badge glyphs,
+     anywhere blue renders as foreground color rather than a fill. ~6.3:1 against --card. */
+  --link: #60a5fa;
 }
 
 @theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -69,7 +99,14 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-link: var(--link);
+  /* design.md: card & control radius 14px, pill (badges, fully-round controls) stays Tailwind's
+     built-in `rounded-full`, unaffected by this scale. */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -81,6 +118,50 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+  .dark body {
+    /* User-supplied background.jpg (an abstract blue fluid/marble texture) as the page backdrop,
+       with a diagonal black → purple → black wash layered on top — the wash is what pulls the
+       photo (blue-only) into this app's actual blue/purple/black palette, and darkens it enough
+       that card surfaces and body text stay legible over it. Gradient layers are listed first
+       because in CSS multiple background-image, earlier layers paint on top of later ones. */
+    background-image:
+      linear-gradient(165deg, rgba(5, 5, 16, 0.9) 0%, rgba(56, 20, 120, 0.55) 45%, rgba(5, 5, 16, 0.92) 100%),
+      url("/background.jpg");
+    background-size: cover, cover;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    background-attachment: fixed, fixed;
+  }
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  /* design.md label-md: JetBrains Mono, 12px/600 — used for short technical labels (Task IDs,
+     status pills), not body copy. */
+  .label-mono {
+    @apply font-mono text-xs font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* Keeps a container's horizontal scroll functional (still scrollable by drag/trackpad/keyboard)
+     while hiding the visible scrollbar track — used on the header nav, where `overflow-x-auto` is
+     a narrow-viewport safety net, not something that should show a permanent scrollbar UI on
+     screens where it barely triggers. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Gradient wordmark / hero-title treatment — used sparingly (the header logo, the login
+     headline) rather than on every heading, which would fight the app's own semantic-color
+     coding for status. Primary → accent only, matching design.md's two-blue palette. */
+  .text-gradient-brand {
+    @apply from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent;
   }
 }

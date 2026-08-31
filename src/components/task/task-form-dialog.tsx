@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Save } from "lucide-react";
 
 import { createTaskAction, updateTaskAction } from "@/lib/actions/task-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
@@ -84,20 +85,39 @@ export function TaskFormDialog({
           <input type="hidden" name="date" value={dateParam} />
           {task && <input type="hidden" name="id" value={task.id} />}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="taskId">Task ID</Label>
-            <Input
-              id="taskId"
-              name="taskId"
-              placeholder="T-1039"
-              value={taskId}
-              onChange={(e) => setTaskId(e.target.value)}
-              aria-invalid={!!state.fieldErrors?.taskId}
-              required
-            />
-            {state.fieldErrors?.taskId && (
-              <p className="text-destructive text-sm">{state.fieldErrors.taskId[0]}</p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="taskId">Task ID</Label>
+              <Input
+                id="taskId"
+                name="taskId"
+                placeholder="T-1039"
+                value={taskId}
+                onChange={(e) => setTaskId(e.target.value)}
+                aria-invalid={!!state.fieldErrors?.taskId}
+                required
+                className="font-mono"
+              />
+              {state.fieldErrors?.taskId && (
+                <p className="text-destructive text-sm">{state.fieldErrors.taskId[0]}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="duration">Duration (H:MM:SS)</Label>
+              <Input
+                id="duration"
+                name="duration"
+                placeholder="4:00:00"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                aria-invalid={!!state.fieldErrors?.duration}
+                required
+              />
+              {state.fieldErrors?.duration && (
+                <p className="text-destructive text-sm">{state.fieldErrors.duration[0]}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -113,22 +133,6 @@ export function TaskFormDialog({
             />
             {state.fieldErrors?.description && (
               <p className="text-destructive text-sm">{state.fieldErrors.description[0]}</p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="duration">Duration (H:MM:SS)</Label>
-            <Input
-              id="duration"
-              name="duration"
-              placeholder="4:00:00"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              aria-invalid={!!state.fieldErrors?.duration}
-              required
-            />
-            {state.fieldErrors?.duration && (
-              <p className="text-destructive text-sm">{state.fieldErrors.duration[0]}</p>
             )}
           </div>
 
@@ -150,8 +154,13 @@ export function TaskFormDialog({
 
           {availableSkills.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <Label>Skills (optional)</Label>
-              <div className="flex max-h-36 flex-col gap-1.5 overflow-y-auto rounded-md border p-2">
+              <Label>
+                Skills (optional)
+                {selectedSkillIds.length > 0 && (
+                  <span className="text-muted-foreground font-normal"> · {selectedSkillIds.length} selected</span>
+                )}
+              </Label>
+              <div className="bg-muted/30 grid max-h-36 grid-cols-2 gap-x-3 gap-y-1.5 overflow-y-auto rounded-lg border p-2.5">
                 {availableSkills.map((skill) => (
                   <label key={skill.id} className="flex items-center gap-2 text-sm">
                     <Checkbox
@@ -160,7 +169,7 @@ export function TaskFormDialog({
                       checked={selectedSkillIds.includes(skill.id)}
                       onCheckedChange={(checked) => toggleSkill(skill.id, checked === true)}
                     />
-                    {skill.name}
+                    <span className="truncate">{skill.name}</span>
                   </label>
                 ))}
               </div>
@@ -178,7 +187,7 @@ export function TaskFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Saving…" : "Save"}
+              <Save /> {isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </form>

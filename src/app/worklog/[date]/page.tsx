@@ -29,7 +29,7 @@ export default async function WorkLogDayPage({
   const netWorkSeconds = calculateNetWorkSeconds(workDay);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <WorkDayHeader workDay={workDay} dateParam={dateParam} />
       <TimeTrackingCard workDay={workDay} dateParam={dateParam} />
       <TaskSection

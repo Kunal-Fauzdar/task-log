@@ -2,7 +2,12 @@ import Link from "next/link";
 
 import { formatDateOnly, getDayName } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
-import { WORK_DAY_STATUS_LABELS, calculateNetWorkSeconds } from "@/lib/domain/workday";
+import {
+  WORK_DAY_STATUS_BADGE_VARIANT,
+  WORK_DAY_STATUS_LABELS,
+  calculateNetWorkSeconds,
+} from "@/lib/domain/workday";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -25,14 +30,14 @@ type RecentWorkDay = {
 export function RecentWorkDaysTable({ workDays }: { workDays: RecentWorkDay[] }) {
   if (workDays.length === 0) {
     return (
-      <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+      <p className="text-muted-foreground bg-card/40 backdrop-blur-md rounded-lg border border-dashed p-5 text-center text-sm">
         No work logged yet.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border bg-card/85 shadow-sm backdrop-blur-md">
       <Table>
         <TableHeader>
           <TableRow>
@@ -51,13 +56,17 @@ export function RecentWorkDaysTable({ workDays }: { workDays: RecentWorkDay[] })
                 <TableCell>
                   <Link
                     href={`/worklog/${formatDateOnly(workDay.date)}`}
-                    className="text-primary underline underline-offset-4"
+                    className="text-link underline underline-offset-4"
                   >
                     {formatDateOnly(workDay.date)}
                   </Link>
                 </TableCell>
                 <TableCell>{getDayName(workDay.date)}</TableCell>
-                <TableCell>{WORK_DAY_STATUS_LABELS[workDay.status]}</TableCell>
+                <TableCell>
+                  <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[workDay.status]}>
+                    {WORK_DAY_STATUS_LABELS[workDay.status]}
+                  </Badge>
+                </TableCell>
                 <TableCell className="tabular-nums">
                   {netWorkSeconds !== null
                     ? formatSecondsToDuration(Math.max(0, netWorkSeconds))

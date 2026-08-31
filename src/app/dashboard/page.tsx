@@ -1,4 +1,15 @@
+import {
+  CalendarCheck2,
+  CheckCircle2,
+  Clock,
+  LayoutDashboard,
+  ListTodo,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
+
 import { getRecentWorkDays, getWorkDayByDate, listWorkDays } from "@/lib/data/workday";
+import { formatDisplayDate } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import {
   calculateTotalTaskSeconds,
@@ -6,6 +17,7 @@ import {
   getWeekRange,
   sumNetWorkSeconds,
 } from "@/lib/domain/workday";
+import { PageHeader } from "@/components/layout/page-header";
 import { RecentWorkDaysTable } from "@/components/dashboard/recent-workdays-table";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { TodayWorkCard } from "@/components/dashboard/today-work-card";
@@ -44,23 +56,64 @@ export default async function DashboardPage() {
     monthTaskCount > 0 ? Math.round(monthTotalTaskSeconds / monthTaskCount) : 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Dashboard"
+        description={formatDisplayDate(today)}
+      />
       <TodayWorkCard workDay={todayWorkDay} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Statistics</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatTile label="Today's hours" value={formatSecondsToDuration(todaysHours)} />
-          <StatTile label="This week's hours" value={formatSecondsToDuration(weekHours)} />
-          <StatTile label="This month's hours" value={formatSecondsToDuration(monthHours)} />
-          <StatTile label="Tasks this month" value={String(monthTaskCount)} />
-          <StatTile label="Completed this month" value={String(monthCompletedTaskCount)} />
-          <StatTile label="Avg. task duration" value={formatSecondsToDuration(averageTaskSeconds)} />
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <TrendingUp className="text-link size-5" />
+          Statistics
+        </h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          <StatTile
+            label="Today's hours"
+            value={formatSecondsToDuration(todaysHours)}
+            icon={Clock}
+            accent="info"
+          />
+          <StatTile
+            label="This week's hours"
+            value={formatSecondsToDuration(weekHours)}
+            icon={CalendarCheck2}
+            accent="info"
+          />
+          <StatTile
+            label="This month's hours"
+            value={formatSecondsToDuration(monthHours)}
+            icon={CalendarCheck2}
+            accent="primary"
+          />
+          <StatTile
+            label="Tasks this month"
+            value={String(monthTaskCount)}
+            icon={ListTodo}
+            accent="primary"
+          />
+          <StatTile
+            label="Completed this month"
+            value={String(monthCompletedTaskCount)}
+            icon={CheckCircle2}
+            accent="success"
+          />
+          <StatTile
+            label="Avg. task duration"
+            value={formatSecondsToDuration(averageTaskSeconds)}
+            icon={Timer}
+            accent="warning"
+          />
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Recent Work Days</h2>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <CalendarCheck2 className="text-link size-5" />
+          Recent Work Days
+        </h2>
         <RecentWorkDaysTable workDays={recentWorkDays} />
       </section>
     </div>

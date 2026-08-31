@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { History, Pencil, Trash2 } from "lucide-react";
 
 import { formatDateOnly } from "@/lib/domain/date";
-import { formatProficiencyChange } from "@/lib/domain/skill";
+import {
+  SKILL_CATEGORY_BORDER_CLASS,
+  SKILL_CATEGORY_PROGRESS_CLASS,
+  formatProficiencyChange,
+} from "@/lib/domain/skill";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { SkillRecord } from "@/components/skill/skill-form-dialog";
+import { cn } from "@/lib/utils";
 
 export type SkillCardData = SkillRecord & {
   category: string;
@@ -25,15 +30,27 @@ export function SkillCard({
   onDelete: (skill: SkillCardData) => void;
 }) {
   const [showHistory, setShowHistory] = useState(false);
+  const category = skill.category as keyof typeof SKILL_CATEGORY_PROGRESS_CLASS;
+  const progressClass = SKILL_CATEGORY_PROGRESS_CLASS[category];
+  const borderClass = SKILL_CATEGORY_BORDER_CLASS[category];
 
   return (
-    <div className="border-border flex flex-col gap-2 rounded-lg border p-4">
+    <div
+      className={cn(
+        "border-border bg-card flex flex-col gap-2 rounded-lg border border-l-4 p-3.5 shadow-sm transition-shadow hover:shadow-md",
+        borderClass,
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium">{skill.name}</h3>
-        <span className="text-sm font-medium tabular-nums">{skill.proficiencyPercentage}%</span>
+        <span className="text-sm font-semibold tabular-nums">{skill.proficiencyPercentage}%</span>
       </div>
 
-      <Progress value={skill.proficiencyPercentage} aria-label={`${skill.name} proficiency`} />
+      <Progress
+        value={skill.proficiencyPercentage}
+        indicatorClassName={progressClass}
+        aria-label={`${skill.name} proficiency`}
+      />
 
       <p className="text-muted-foreground text-xs">
         Updated {formatDateOnly(skill.updatedAt)}
@@ -46,8 +63,9 @@ export function SkillCard({
           <button
             type="button"
             onClick={() => setShowHistory((value) => !value)}
-            className="text-muted-foreground text-xs underline underline-offset-4"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs underline underline-offset-4"
           >
+            <History className="size-3" />
             {showHistory ? "Hide" : "Show"} history ({skill.history.length})
           </button>
           {showHistory && (
@@ -63,7 +81,7 @@ export function SkillCard({
         </div>
       )}
 
-      <div className="mt-1 flex justify-end gap-1">
+      <div className={cn("flex justify-end gap-1", !skill.history.length && "mt-1")}>
         <Button
           variant="ghost"
           size="icon"

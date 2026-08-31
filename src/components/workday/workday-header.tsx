@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { CalendarRange, PalmtreeIcon, Save, Trash2 } from "lucide-react";
 
 import { deleteWorkDayAction, updateWorkDayAction } from "@/lib/actions/workday-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
@@ -75,23 +76,32 @@ export function WorkDayHeader({
   }
 
   return (
-    <section className="border-border flex flex-col gap-4 rounded-lg border p-4">
+    <section className="border-border bg-card border-l-primary flex flex-col gap-3.5 rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="flex items-center gap-2">
+          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+            <CalendarRange className="size-4" />
+          </span>
           <h1 className="text-xl font-semibold tracking-tight">
             {formatDisplayDate(workDay.date)}
           </h1>
         </div>
         <div className="flex items-center gap-2">
           {isWeekend(workDay.date) && <Badge variant="outline">Weekend</Badge>}
-          {workDay.isHoliday && <Badge variant="secondary">Holiday</Badge>}
+          {workDay.isHoliday && (
+            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-link">
+              <PalmtreeIcon /> Holiday
+            </Badge>
+          )}
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setConfirmingDelete(true)}
             disabled={isDeletePending}
+            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
+            <Trash2 />
             {isDeletePending ? "Deleting…" : "Delete Work Day"}
           </Button>
         </div>
@@ -112,7 +122,7 @@ export function WorkDayHeader({
         </AlertDialogContent>
       </AlertDialog>
 
-      <form action={formAction} className="flex flex-col gap-4">
+      <form action={formAction} className="flex flex-col gap-3.5">
         <input type="hidden" name="id" value={workDay.id} />
         <input type="hidden" name="date" value={dateParam} />
 
@@ -154,7 +164,7 @@ export function WorkDayHeader({
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={isPending} size="sm">
-            {isPending ? "Saving…" : "Save"}
+            <Save /> {isPending ? "Saving…" : "Save"}
           </Button>
           <span role="status" className="text-muted-foreground text-sm">
             {state.status === "error" && state.message}

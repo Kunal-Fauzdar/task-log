@@ -18,7 +18,7 @@ test("work log day: add, edit, and delete a task; toggle holiday", async ({ page
   await expect(page.getByText("No tasks logged for this day yet.")).toBeVisible();
 
   // Add a task
-  await page.getByRole("button", { name: "+ Add Task" }).click();
+  await page.getByRole("button", { name: "Add Task" }).click();
   await page.getByLabel("Task ID").fill("T-1039");
   await page
     .getByLabel("Task description")
@@ -54,7 +54,15 @@ test("work log day: add, edit, and delete a task; toggle holiday", async ({ page
     "true",
   );
   await expect(page.getByLabel("Holiday reason")).toHaveValue("Phase 11 QA Holiday");
-  await expect(page.locator('[data-slot="badge"]', { hasText: "Holiday" })).toBeVisible();
+  // Scoped to WorkDayHeader specifically — TimeTrackingCard's status badge also reads "Holiday"
+  // once isHoliday is true (holiday overrides WorkDayStatus, CLAUDE.md §5), so an unscoped badge
+  // locator matches both.
+  const workDayHeaderSection = page
+    .getByRole("switch", { name: "Mark as holiday" })
+    .locator("xpath=ancestor::section[1]");
+  await expect(
+    workDayHeaderSection.locator('[data-slot="badge"]', { hasText: "Holiday" }),
+  ).toBeVisible();
 
   await page.getByRole("switch", { name: "Mark as holiday" }).click();
   await expect(page.getByLabel("Holiday reason")).toHaveCount(0);
@@ -86,7 +94,7 @@ test("deleting a work day removes it and its tasks, and redirects to the dashboa
 
   try {
     await page.goto(`/worklog/${deleteTestDateParam}`);
-    await page.getByRole("button", { name: "+ Add Task" }).click();
+    await page.getByRole("button", { name: "Add Task" }).click();
     await page.getByLabel("Task ID").fill("T-2001");
     await page.getByLabel("Task description").fill("Will be deleted with its day");
     await page.getByLabel("Duration (H:MM:SS)").fill("1:00:00");

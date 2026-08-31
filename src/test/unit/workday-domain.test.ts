@@ -5,8 +5,10 @@ import {
   calculateNetWorkSeconds,
   calculateTotalTaskSeconds,
   deriveWorkDayStatus,
+  fillMissingWorkingDays,
   hasDurationDiscrepancy,
 } from "@/lib/domain/workday";
+import { parseDateOnly } from "@/lib/domain/date";
 
 describe("calculateNetWorkSeconds", () => {
   it("returns null when checkIn or checkOut is missing", () => {
@@ -80,5 +82,65 @@ describe("deriveWorkDayStatus", () => {
     expect(
       deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), isHoliday: false }),
     ).toBe("COMPLETED");
+  });
+});
+
+describe("fillMissingWorkingDays", () => {
+  const MON_FRI = [1, 2, 3, 4, 5];
+
+  it("fills every configured working day in range that has no real WorkDay yet", () => {
+    // 2026-08-01 Sat, 08-02 Sun, 08-03 Mon, 08-04 Tue, 08-05 Wed, 08-06 Thu, 08-07 Fri
+    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
+    const existing = [{ date: parseDateOnly("2026-08-04") }]; // already logged Tuesday
+    const today = parseDateOnly("2026-08-10"); // whole range is in the past
+
+    const filled = fillMissingWorkingDays(existing, range, MON_FRI, today);
+    const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
+
+    // Weekend days (08-01, 08-02) never appear; 08-04 appears once (the real entry, not
+    // duplicated); the three other Mon-Fri days are filled in blank.
+    expect(dates).toEqual(["2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07"]);
+  });
+
+  it("does not fill a working day past today — nothing to log yet", () => {
+    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
+    const today = parseDateOnly("2026-08-05"); // Wednesday — Thu/Fri haven't happened yet
+
+    const filled = fillMissingWorkingDays([], range, MON_FRI, today);
+    const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
+
+    expect(dates).toEqual(["2026-08-03", "2026-08-04", "2026-08-05"]);
+  });
+
+  it("blank filled entries have the same shape a zero-task day already renders as", () => {
+    const range = { from: parseDateOnly("2026-08-03"), to: parseDateOnly("2026-08-03") };
+    const [filled] = fillMissingWorkingDays([], range, MON_FRI, parseDateOnly("2026-08-03"));
+
+    expect(filled).toMatchObject({
+      checkIn: null,
+      checkOut: null,
+      breakSeconds: 0,
+      isHoliday: false,
+      holidayReason: null,
+      tasks: [],
+    });
+  });
+
+  it("respects a custom working-days configuration (e.g. Sun-Thu)", () => {
+    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
+    const sunThu = [0, 1, 2, 3, 4];
+
+    const filled = fillMissingWorkingDays([], range, sunThu, parseDateOnly("2026-08-10"));
+    const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
+
+    expect(dates).toEqual(["2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06"]);
+  });
+
+  it("leaves a real WorkDay on a non-working day untouched (e.g. worked a Saturday)", () => {
+    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-01") };
+    const existing = [{ date: parseDateOnly("2026-08-01") }]; // Saturday, not in MON_FRI
+
+    const filled = fillMissingWorkingDays(existing, range, MON_FRI, parseDateOnly("2026-08-01"));
+    expect(filled).toEqual(existing);
   });
 });

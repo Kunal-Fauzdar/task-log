@@ -34,7 +34,7 @@ test("start work, break, task timer, end work, and see net work duration", async
   await expect(page.getByRole("button", { name: "Start Break" })).toBeVisible();
 
   // Add a task and run its timer
-  await page.getByRole("button", { name: "+ Add Task" }).click();
+  await page.getByRole("button", { name: "Add Task" }).click();
   await page.getByLabel("Task ID").fill("T-3001");
   await page.getByLabel("Task description").fill("E2E timer test");
   await page.getByLabel("Duration (H:MM:SS)").fill("0:00:00");

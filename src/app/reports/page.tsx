@@ -1,3 +1,11 @@
+import {
+  BarChart3,
+  Briefcase,
+  CalendarRange,
+  ClipboardList,
+  Sparkles,
+} from "lucide-react";
+
 import { listWorkDays } from "@/lib/data/workday";
 import { getTasksInRange } from "@/lib/data/reports";
 import { formatDateOnly, parseDateOnly } from "@/lib/domain/date";
@@ -10,6 +18,7 @@ import {
   groupTasksBySkill,
   groupTasksByTaskId,
 } from "@/lib/domain/reports";
+import { PageHeader } from "@/components/layout/page-header";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { ReportDateFilterForm } from "@/components/reports/report-date-filter-form";
 import { TasksByDateTable } from "@/components/reports/tasks-by-date-table";
@@ -62,51 +71,82 @@ export default async function ReportsPage({
   const monthlySummary = buildMonthlySummary(workDays, tasks);
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold tracking-tight">Reports</h1>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        icon={BarChart3}
+        title="Reports"
+        description="Work, task, and skill summaries for a date range."
+        accent="cyan"
+      />
 
       <ReportDateFilterForm from={formatDateOnly(range.from)} to={formatDateOnly(range.to)} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Work Summary</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile label="Total working days" value={String(workSummary.totalWorkingDays)} />
-          <StatTile label="Total hours" value={formatSecondsToDuration(workSummary.totalHoursSeconds)} />
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <Briefcase className="text-info size-5" />
+          Work Summary
+        </h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <StatTile
+            label="Total working days"
+            value={String(workSummary.totalWorkingDays)}
+            icon={Briefcase}
+            accent="info"
+          />
+          <StatTile
+            label="Total hours"
+            value={formatSecondsToDuration(workSummary.totalHoursSeconds)}
+            icon={ClipboardList}
+            accent="primary"
+          />
           <StatTile
             label="Avg. daily hours"
             value={formatSecondsToDuration(workSummary.averageDailyHoursSeconds)}
+            icon={BarChart3}
+            accent="success"
           />
           <StatTile
             label="Total task duration"
             value={formatSecondsToDuration(workSummary.totalTaskDurationSeconds)}
+            icon={ClipboardList}
+            accent="warning"
           />
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Task Summary</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatTile label="Number of tasks" value={String(tasks.length)} />
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <ClipboardList className="text-accent size-5" />
+          Task Summary
+        </h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <StatTile label="Number of tasks" value={String(tasks.length)} icon={ClipboardList} />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Tasks by Date</h3>
+            <h3 className="text-muted-foreground text-sm font-medium">Tasks by Date</h3>
             <TasksByDateTable rows={tasksByDate} />
           </div>
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-muted-foreground">Tasks by Task ID</h3>
+            <h3 className="text-muted-foreground text-sm font-medium">Tasks by Task ID</h3>
             <TasksByTaskIdTable rows={tasksByTaskId} />
           </div>
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Skill Usage</h2>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <Sparkles className="text-link size-5" />
+          Skill Usage
+        </h2>
         <SkillUsageTable rows={skillUsage} />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Monthly Summary</h2>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <CalendarRange className="text-accent size-5" />
+          Monthly Summary
+        </h2>
         <MonthlySummaryTable rows={monthlySummary} />
       </section>
     </div>

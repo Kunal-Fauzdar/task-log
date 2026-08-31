@@ -1,3 +1,5 @@
+import { CalendarRange, Download } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,8 +9,11 @@ import { Label } from "@/components/ui/label";
 // makes the browser download the response instead of navigating to it.
 export function ExportRangeForm() {
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">Custom Range</h2>
+    <section className="border-border bg-card flex flex-col gap-2.5 rounded-lg border p-4 shadow-sm">
+      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <CalendarRange className="text-link size-5" />
+        Custom Range
+      </h2>
       <form method="GET" action="/api/export" className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="type" value="range" />
         <div className="flex flex-col gap-1.5">
@@ -19,7 +24,9 @@ export function ExportRangeForm() {
           <Label htmlFor="export-to">To</Label>
           <Input id="export-to" name="to" type="date" required />
         </div>
-        <Button type="submit">Export Range</Button>
+        <Button type="submit">
+          <Download /> Export Range
+        </Button>
       </form>
     </section>
   );

@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Save } from "lucide-react";
 
 import { createSkillAction, updateSkillAction } from "@/lib/actions/skill-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
+import { SKILL_CATEGORY_LABELS, SKILL_CATEGORY_PROGRESS_CLASS, deriveSkillCategory } from "@/lib/domain/skill";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 
 export type SkillRecord = {
@@ -38,6 +41,11 @@ export function SkillFormDialog({
   const [name, setName] = useState(skill?.name ?? "");
   const [proficiency, setProficiency] = useState(String(skill?.proficiencyPercentage ?? 0));
   const [notes, setNotes] = useState(skill?.notes ?? "");
+
+  const proficiencyNum = Number(proficiency);
+  const isValidProficiency =
+    Number.isInteger(proficiencyNum) && proficiencyNum >= 0 && proficiencyNum <= 100;
+  const previewCategory = isValidProficiency ? deriveSkillCategory(proficiencyNum) : null;
 
   useEffect(() => {
     if (state.status === "success") {
@@ -88,6 +96,19 @@ export function SkillFormDialog({
                 {state.fieldErrors.proficiencyPercentage[0]}
               </p>
             )}
+            {previewCategory && (
+              <div className="flex items-center gap-2">
+                <Progress
+                  value={proficiencyNum}
+                  indicatorClassName={SKILL_CATEGORY_PROGRESS_CLASS[previewCategory]}
+                  className="h-1.5"
+                  aria-hidden
+                />
+                <span className="text-muted-foreground w-24 shrink-0 text-right text-xs">
+                  {SKILL_CATEGORY_LABELS[previewCategory]}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -113,7 +134,7 @@ export function SkillFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Saving…" : "Save"}
+              <Save /> {isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </form>

@@ -35,6 +35,311 @@ Components + Server Actions + `revalidatePath` cover the CRUD flows; local `useS
 handles live-ticking timers. Add a client data-fetching library later only if a concrete need
 appears (e.g. cross-tab timer sync).
 
+**Visual design system (added post-Phase-11, on user request — "make the UI stunning,
+attractive, professional, more color/icons, not childish"):** the original build used shadcn's
+default zero-chroma neutral theme throughout (literally `oklch(x 0 0)` for every token) with no
+icons — functional but flat. `src/app/globals.css` now defines a real palette: `--primary` is an
+indigo/blue (`oklch(0.5 0.2 264)`), plus `--success` (green), `--warning` (amber), and a new
+`--info` (sky blue) token, each with a paired `-foreground` for text-on-fill contrast; `--radius`
+bumped to `0.75rem` for a softer, more modern corner radius; `body` carries a very subtle two-tone
+radial-gradient backdrop (primary + success, ~5-10% opacity, `background-attachment: fixed`) for
+depth without being distracting. All of this is dark-mode-mirrored the same way the original
+tokens were. `Badge` (`src/components/ui/badge.tsx`) gained `success`/`warning`/`info` variants
+alongside the existing default/secondary/destructive/outline; `Progress`
+(`src/components/ui/progress.tsx`) gained an `indicatorClassName` prop so callers can override
+the fill color per-instance (used by SkillMap's proficiency bars — see below). `lucide-react`
+icons (already a project dependency, `iconLibrary: "lucide"` in `components.json`) are now used
+throughout: every nav item, every page `<h1>`, every section `<h2>`, and most action buttons
+carry a meaningful icon, not decoration for its own sake — e.g. `Header`'s active nav state is
+now `bg-primary/10 text-primary` instead of plain gray, `StatTile` takes an `icon`/`accent` pair
+so each dashboard/reports stat gets a color-coded icon badge, and SkillMap's proficiency bars are
+colored red/amber/green by category band via new `SKILL_CATEGORY_PROGRESS_CLASS`/
+`SKILL_CATEGORY_ICON_CLASS` exports in `src/lib/domain/skill.ts` (traffic-light convention,
+reusing the existing destructive/warning/success semantic tokens rather than inventing a
+skill-specific palette). `WORK_DAY_STATUS_BADGE_VARIANT` (new export in
+`src/lib/domain/workday.ts`, alongside the existing `WORK_DAY_STATUS_LABELS`) is the single
+source of truth for which `Badge` variant each `WorkDayStatus` renders as — both
+`TodayWorkCard` and `RecentWorkDaysTable` import it rather than each defining their own copy.
+**Two real bugs found via e2e test failures during this pass, both fixed:** (1) manual "+ Add
+Skill"/"+ Add Task" button text was replaced with an icon + plain text ("Add Skill"/"Add Task"),
+which required updating the 5 e2e assertions that matched the literal "+" — same treatment for
+Calendar's "← Prev"/"Next →" links (now icon + "Prev"/"Next", `e2e/calendar.spec.ts` updated to
+match); (2) giving `TimeTrackingCard`'s status line an actual `Badge` (previously plain muted
+text) meant it now also renders literal text "Holiday" whenever `isHoliday` is true (holiday
+always overrides `WorkDayStatus`, CLAUDE.md §5) — this collided with `WorkDayHeader`'s own new
+Holiday badge on the same page, breaking an unscoped `e2e/worklog.spec.ts` locator; fixed by
+scoping that locator to `WorkDayHeader`'s `<section>` specifically via an xpath-ancestor query
+(same pattern already used in `skillmap.spec.ts`). **Found, not fixed (out of scope for a
+styling pass — flagged to the user):** `/settings` is still literally `PagePlaceholder` — no
+Holiday reference-calendar CRUD UI was ever built despite `src/lib/data/holiday.ts` existing
+with `createHoliday`/`getHolidayByDate`/`listHolidays` and CLAUDE.md's own folder-structure
+comment calling it out as "holiday calendar config." The placeholder's copy was corrected from
+the inaccurate "Built in {phase}." to "Planned for {phase} — not yet built." (and
+`page-placeholder.test.tsx` updated to match) so it reads as an honest gap rather than a broken
+claim. Verified: 224 Vitest + 22 Playwright (1 pre-existing, already-documented parallel-worker
+flake in `skillmap.spec.ts`, confirmed non-regressing by re-running standalone twice), `next
+build` clean, and every page spot-checked visually in a real authenticated browser session.
+
+**Second design pass (user: "lot of unnecessary space... whole web looks blend"):** tightened
+`<main>` padding (`py-6`→`py-5`), bumped `--primary` chroma slightly and added a violet gradient
+stop to the body backdrop, gave `StatTile` a colored left-accent bar
+(`absolute inset-y-0 left-0 w-1`, driven by a new `ACCENT_STYLES` icon/bar pair) plus tighter
+padding, and diversified per-page accent hues beyond the single primary blue (teal for
+Calendar/Import, violet for Skills, cyan for Reports) using Tailwind's built-in palette directly
+rather than adding new design tokens for one-off hues. Several "hero" cards (`TodayWorkCard`,
+`WorkDayHeader`, `TimeTrackingCard`, the Export cards) picked up a `border-l-4 border-l-primary`
+accent border. Swept `border-dashed p-6` → `p-5` empty-state padding across 7 table/list
+components for consistency.
+
+**Working Days (user: export "only exporting some days for month" — root cause: an export only
+ever contains WorkDay rows that exist in the DB, i.e. dates someone actually visited; there was
+no concept of "the days I'm normally supposed to work").** Added a genuine singleton config row —
+`AppSettings` (`id: "singleton"`, `workingDays Int[] @default([1,2,3,4,5])`, Sun=0..Sat=6) — the
+first schema table in this app that isn't per-WorkDay/Task/Skill domain data but whole-app
+config; `src/lib/data/settings.ts`'s `getWorkingDays`/`updateWorkingDays` `upsert` on that fixed
+id rather than requiring a seed step. `src/lib/domain/workday.ts`'s new `fillMissingWorkingDays`
+takes the real WorkDay rows in a range plus the working-days config and synthesizes a
+`BlankExportDay` (same shape a genuine zero-task day already renders as — checkIn/checkOut null,
+tasks `[]`) for every configured working day in range that has no real row yet, capped at
+`today` (never invents rows for days that haven't happened). `/api/export`'s route handler calls
+it before building the workbook, so every export now has one row per expected working day, not
+just visited ones. New `/settings` page (`WorkingDaysForm`, a controlled 7-checkbox
+`useActionState` form, same pattern as every other form in this app) replaces what had been a
+literal `PagePlaceholder` — this closes the "Holiday reference-calendar... never built" gap note
+above only insofar as `/settings` now does something real; a Holiday CRUD UI is still not built
+(same out-of-scope flag as before). `PagePlaceholder` and its test were deleted as dead code once
+Settings became real. A genuine bug surfaced immediately after this feature shipped: the dev
+server's already-loaded Prisma client didn't know about the new `AppSettings` model until both
+`npx prisma generate` was re-run *and* `next dev` was restarted (Turbopack's watcher doesn't
+pick up a regenerated `src/generated/prisma` output on its own) — worth checking first if a
+freshly-migrated model 500s with "Cannot read properties of undefined" immediately after a schema
+change.
+
+**Third pass — full UI/UX ownership handoff (user: "take ownership of improving the UI/UX of
+this entire application... inspect yourself... actually implement the improvements," explicitly
+declining to specify a palette/layout/component spec).** This was a genuine audit-then-fix pass,
+not another color/spacing tweak: every page was inspected in a real authenticated browser first
+(read-only — see the data-safety note in §3's testing-commands guidance), and the fixes target
+findings from that inspection, not guesses.
+- **New `src/components/layout/page-header.tsx` (`PageHeader`)** replaces ~7 near-identical but
+  subtly-drifted inline copies of the "icon badge + `<h1>`" block that had accumulated one page
+  at a time (Dashboard was actually missing a page title/header entirely — the one page that had
+  never gotten one, found only by looking, not by grepping for the pattern). Takes
+  `icon`/`title`/`description?`/`accent?`/`actions?`; `accent` covers the semantic tokens plus the
+  handful of one-off Tailwind hues (teal/violet/cyan) already in use. Dashboard, Skills, Export,
+  Import, Reports, Settings, and the Calendar month page (which also folded its Prev/Next buttons
+  into `actions`) all switched to it.
+- **Dialed back the `border-l-4` accent border** added in the second pass: it had spread to
+  Export's two cards, Import's upload card, and the Settings form — on a single-card page a left
+  accent border communicates nothing (there's nothing to distinguish it from), so it stayed only
+  on genuine "this is the primary thing on a multi-section page" cases (`TodayWorkCard`,
+  `WorkDayHeader`, `TimeTrackingCard`) and was removed from `ExportQuickLinks`, `ExportRangeForm`,
+  `WorkingDaysForm`, and the Import upload card.
+- **Export and Import were the two weakest pages by far** — a single small card floating in most
+  of an empty viewport, not because of the app's actual scope but because the pages never grew any
+  real content beyond the bare form. Both got a `lg:grid-cols-[1fr_18rem]` layout with a static
+  info-panel `<aside>` (what's actually in an export file; how import's duplicate/never-overwrite
+  behavior works) — genuinely useful content, not filler, using facts already true per §6/Phase 9
+  rather than inventing new copy to pad space.
+- **Import's native `<input type="file">`** (`Choose File — No file chosen`, unstyled and
+  visually the single worst element in the app) is now a clickable dropzone-styled `<label>`
+  wrapping a `sr-only` input that still carries the same `id="import-file"` — `e2e/import.spec.ts`
+  locates it by that id and doesn't require visibility for `setInputFiles`, so this didn't need an
+  e2e change. Shows the chosen filename once selected.
+- **`WorkDayHeader`'s "Delete Work Day" button** was a solid destructive-red outline button sitting
+  directly beside the date title — too much visual weight for a rare, already-double-confirmed
+  (`AlertDialog`) action on the page used every single day. Restyled to `variant="ghost"` with
+  muted text, turning destructive-red only on hover.
+- **`CalendarGrid` cells** gained a small status icon (`Clock3`/`CheckCircle2`/`PalmtreeIcon` for
+  IN_PROGRESS/COMPLETED/HOLIDAY) alongside the existing color coding — redundant encoding, not
+  decoration, so status is legible without relying on hue alone — plus a faint weekend-column
+  tint on empty cells for structure in a mostly-blank month.
+- **`Header` navigation redesigned for mobile.** The previous `overflow-x-auto` horizontal scroll
+  was the entire mobile nav story for 8 items + logout — a weak, undiscoverable pattern the user
+  explicitly flagged wanting "intentionally designed" tablet/mobile experiences. The desktop bar
+  (`hidden md:flex`, `overflow-x-auto` kept as a safety net, not the primary interaction) is
+  unchanged above `md`; below it, a hamburger button toggles a dropdown panel with the same nav
+  items stacked vertically plus Log Out, closing on backdrop click or on route change. The
+  route-change close uses the same "adjust state during render" comparison pattern as
+  `TimeTrackingCard`/`WorkDayHeader` (§3), not `useEffect`+`setState` — caught immediately by
+  `react-hooks/set-state-in-effect` at lint time, exactly as that rule is meant to. The mobile
+  panel is a plain `<div>`, not a second `<nav aria-label="Primary">`, so
+  `e2e/navigation.spec.ts`'s `getByRole("navigation", { name: "Primary" })` still resolves to
+  exactly one element.
+- **Dialog polish on the two most-used forms.** `TaskFormDialog`: Task ID and Duration (both
+  short fields) moved into a `grid-cols-2` row instead of two full-width stacked fields; the
+  skills checklist became a 2-column grid with a "N selected" count in its label instead of a
+  single narrow scrolling column. `SkillFormDialog`: proficiency now shows a live mini progress
+  bar (reusing `SKILL_CATEGORY_PROGRESS_CLASS`/`deriveSkillCategory`) as you type, so which band
+  (Less Than 30% / 30 to 70% / More Than 70%) a value lands in is visible before saving, not just
+  after. Neither change touches field `name`s, so no Server Action/Zod schema changed.
+- **New `src/components/ui/skeleton.tsx`** (standard shadcn pulse skeleton) plus `loading.tsx`
+  for Dashboard, `/worklog/[date]`, `/calendar/[month]`, Skills, and Reports — the five genuinely
+  data-heavy Server Component pages — so navigating to them shows a layout-shaped skeleton instead
+  of a blank frame while data loads.
+- **Verification:** 233 Vitest tests, `npm run lint`, and `tsc --noEmit` all clean; `npx next
+  build` clean (the same P1001-on-`migrate deploy`-in-this-sandbox workaround as Phases 8/9 —
+  ran `next build` directly rather than the full `npm run build` script). Every changed page was
+  spot-checked visually in a real authenticated browser session (read-only navigation only, per
+  the data-safety constraint in §3). **Not verified this pass:** actual rendered mobile/tablet
+  behavior — the browser tool's `resize_window` reports success but the page keeps rendering at
+  the original viewport width (same unresolved environment limitation already flagged in Phases
+  10–11); the responsive Tailwind breakpoints themselves were verified by code review, not by
+  eye, so treat the mobile nav as implemented-but-not-visually-confirmed until a session where
+  `resize_window` (or a real device) actually works.
+
+**Fourth pass — dark theme + type + saturation (user, in two messages: "make it more appealing...
+too blend, plain and simple," then "I like a darker... not neon... blue and related colors like
+purple, black will work fine").** The third pass had fixed structural/consistency problems but
+left the app visually restrained (near-white background, mostly flat single-tone surfaces, no
+distinctive typography) — this pass pushes the visual language itself, in the direction the user
+specified rather than a default guess.
+- **Typography:** added `next/font/google` — `Sora` (headings, geometric/distinctive) and `Inter`
+  (body) — as CSS variables set on `<html>` in `layout.tsx`, mapped through `@theme inline` as
+  `--font-sans`/`--font-heading`. A single `@layer base { h1,h2,h3,h4 { @apply font-heading; } }`
+  rule in `globals.css` means every heading across the whole app picked up the new font with zero
+  per-component changes — the same "fix the shared layer once" leverage as `PageHeader` in the
+  third pass.
+- **Dark is now the app's only real theme**, forced via a `dark` class on `<html>` rather than
+  `prefers-color-scheme` (this is a single-user personal tool with no theme toggle, not a
+  light/dark product — matches the existing "no unnecessary configurability" bias in §1). The
+  `:root` (light) token block in `globals.css` is left as-is and unused, purely as a fallback in
+  case a toggle gets added later — it isn't reachable today. The `.dark` block's tokens were
+  redesigned, not just reused: background dropped to a near-black navy
+  (`oklch(0.13 0.016 264)`), and — this is the direct fix for "not neon" — every color's chroma
+  was lowered from what the third pass had used (e.g. primary 0.17→0.15, success/info 0.14→0.10-
+  0.11), since high-chroma colors read as neon specifically when set against a near-black
+  background, not in isolation. Also added `color-scheme: dark` to `.dark`, without which native
+  browser controls (the date-input calendar picker, scrollbars) keep rendering in their light
+  variant regardless of the app's own palette — an easy miss that looks broken rather than
+  intentional.
+- **Decorative hues consolidated into blue → indigo → violet/purple only**, dropping teal, cyan,
+  and pure Tailwind orange/amber accents that the third pass had introduced for per-page/per-
+  gradient variety. This wasn't a search-and-replace of literal color names: semantic status
+  colors (success/warning/destructive/info — meaningful, not decorative) kept their hue but
+  became **tonal** gradients (e.g. `from-success to-success/70`, not `from-success to-teal-500`)
+  rather than jumping to an unrelated hue, since a two-hue gradient is what read as "rainbow/
+  neon," not the color itself. `PageHeader`'s `teal`/`cyan` accent keys were kept (call sites
+  unchanged — Calendar, Import, Reports still pass them) but now render in blue/indigo internally,
+  so the fix lives in one map (`ACCENT_ICON_CLASS`) rather than touching every call site.
+  `Badge`'s five color variants went back to flat semantic fills (the third pass had made them
+  two-stop gradients) — a small pill at badge size reads busy with a gradient in a way a larger
+  surface (a button, an icon badge) doesn't, so gradients stayed only on those larger surfaces.
+- **Verification:** 233 Vitest tests, lint, typecheck, and `next build` (direct, same P1001
+  workaround as before) all clean; every changed page re-spot-checked visually in the real
+  authenticated browser session, including reopening the Add Task dialog to confirm dark-mode
+  contrast/readability on form fields, not just top-level pages.
+
+**Fifth pass — rebuilt on a supplied reference design system (user added `design.md` to the repo
+root and asked to rebuild the UI from it).** `design.md` is extracted metadata from a marketing
+"Interactive Hero" landing-page template (colors/typography/spacing/radius tokens, plus a
+Composition/Motion/WebGL section describing a hero section with cursor-follow effects and
+"Get started"/"Learn more" CTAs). **Scope decision, not asked but made explicitly:** treated it as
+a *token/visual-language reference* to rebuild this app's theme on, not a literal instruction to
+build a marketing hero section inside a productivity tool — the Motion/WebGL/CTA-hierarchy
+guidance describes a one-screen landing page, which doesn't map onto a dense daily-use dashboard,
+and CLAUDE.md's own standing instruction (§"Important" in the original UI/UX-ownership request)
+is "do not unnecessarily change functionality/architecture." The token layer was rebuilt for
+real, though — this is a genuine "from scratch" retheme of `globals.css`, not a tint adjustment:
+  - **Colors taken verbatim from `design.md`**, not approximated: `--background: #050510`,
+    `--card`/`--popover` (its "surface" role): `#161f45`, `--primary: #2b44d1`,
+    `--accent: #435ef0` (its "secondary"/"accent" — both blue, so this app's `accent` *is* that
+    second blue, not a distinct hue), `--foreground: #ffffff`, `--muted-foreground: #a1a1aa`,
+    `--border`/`--input: #27272a`. Roles `design.md` doesn't define (`--secondary`/`--muted` as
+    neutral surfaces, and the semantic `--success`/`--warning`/`--destructive`/`--info` tokens)
+    were derived to sit at a consistent depth/chroma with the rest of that palette rather than
+    invented independently — `--info` was simply set equal to `--accent` since design.md's own
+    palette is blue-only, so a separate "info blue" would be redundant.
+  - **Every decorative violet/indigo/teal/cyan/fuchsia accent from the third and fourth passes
+    was swept out**, since `design.md`'s palette is strictly two blues — grepped for all of them
+    across `src` and confirmed zero remain. `PageHeader`'s `teal`/`violet`/`cyan` accent keys
+    were kept (existing call sites in Calendar/Import/Skills didn't need to change) but now all
+    resolve to different intensities of `primary`/`accent` internally, the same "fix the map, not
+    the call sites" approach used when those keys were first introduced.
+  - **Typography rebuilt per `design.md`'s explicit instruction ("Use Inter for display moments
+    and Inter for body copy")** — dropped the fourth pass's second display face (Sora) entirely;
+    `next/font/google` now loads only `Inter` (`--font-sans`) and, per design.md's `label-md`
+    token, `JetBrains Mono` (`--font-mono`) for short technical labels. `display-lg`'s literal
+    64px/weight-500 spec is a landing-page hero headline size — **deliberately not applied
+    verbatim** to this app's page titles (would wreck the information-density goal from the
+    original UI/UX-ownership request on every single page); headings instead get `font-weight:
+    600` + slightly tightened tracking via a `@layer base` rule, keeping Inter's character
+    without the hero-scale size. A new `.label-mono` utility (`font-mono text-xs font-semibold`)
+    applies the mono treatment specifically to Task IDs — the one genuinely "technical metadata"
+    string in this app's data model (`TaskTable`, `TasksByTaskIdTable`, and the Task ID `Input`
+    in `TaskFormDialog`) — rather than to UI chrome generally.
+  - **Radius**: `--radius` set to `design.md`'s `14px` (its card/control token); swept every
+    `rounded-xl` (the old 18px card radius) to `rounded-lg` across the whole `src` tree so it
+    resolves to the new 14px value everywhere at once, rather than a token change that silently
+    stopped matching most of the actual UI. `rounded-full` (pills — Badge, the mobile-nav close
+    button) was already independent of this scale and needed no change.
+  - **Login page treated as this app's one deliberate "hero moment"**, closest in kind to what
+    `design.md` actually describes: gradient wordmark (`text-gradient-brand`, now `primary→accent`
+    only), a `primary→accent` top accent bar, gradient icon badge — the one screen in the app
+    where that kind of emphasis is earned (first thing any session sees), left at `rounded-2xl`
+    rather than forced to the 14px card scale, matching a hero card's greater visual weight.
+  - **Verification:** 233 Vitest tests, lint, typecheck, and `next build` all clean;
+    dashboard/login/worklog/skills/calendar/export re-spot-checked visually in the real
+    authenticated browser session against `design.md`'s actual hex values, not just "looks dark
+    and blue."
+
+**Sixth pass — navbar scrollbar + user-supplied background image.** Two small follow-ups:
+- The header nav's `overflow-x-auto` safety net was showing a visible horizontal scrollbar at
+  common desktop widths (8 nav items were a few px too wide for the `max-w-6xl` header at default
+  padding/gap). Tightened item padding/gap slightly so it fits without scrolling in the first
+  place, and added a `.no-scrollbar` utility (`globals.css`) — `scrollbar-width: none` +
+  `::-webkit-scrollbar { display: none }` — applied to the nav so the fallback, when it does
+  trigger on narrower widths, scrolls without showing a scrollbar track.
+- User added `public/background.jpg` (an abstract blue fluid-marble texture) and asked for it as
+  the page background in blue/purple/black. Used directly rather than re-derived: `.dark body`'s
+  `background-image` is now a diagonal black → purple → black `linear-gradient` wash layered on
+  top of `url("/background.jpg")` (gradient listed first — in CSS, earlier `background-image`
+  layers paint over later ones), both set to `cover`/`center`/`fixed`. The wash does two jobs at
+  once: it's what actually introduces purple (the photo itself is blue-only), and it darkens the
+  image enough that `--card` (`#161f45`, opaque) and white body text stay fully legible over it —
+  confirmed by checking a text-dense page (`/worklog`), not just the dashboard, since that's where
+  a too-bright backdrop would actually hurt readability first. Replaces the pure-CSS-gradient
+  backdrop from the fourth pass; the file is a normal Next.js `public/` static asset, ~180KB.
+
+**Seventh pass — readability regressions the background image introduced, plus one contrast bug
+that predates it.** The image (fifth/sixth pass) looked good on cards that already had a solid
+`bg-card`, but exposed two real gaps:
+- **Every table wrapper in the app had no background at all.** `overflow-x-auto rounded-lg
+  border shadow-sm` — used by every data table (`RecentWorkDaysTable`, all four Reports tables,
+  `TaskTable`, the Import preview table) — never set `bg-card`; the `<Table>` primitive itself
+  doesn't either (only `TableHeader`/`TableFooter` get `bg-muted/50`). Before the background image
+  this was invisible (the page background was already near-black, close enough to `--card` that
+  the missing fill didn't read as a bug); once a busy photo sat behind it, every table row's text
+  rendered directly over the image. Fixed by adding `bg-card/85 backdrop-blur-md` to that shared
+  wrapper class across all 7 files — a "light glass" surface (per the user's own phrasing) rather
+  than fully opaque, since dense tabular text needs more backing than a sparse empty state does.
+  The same gap existed in every `border-dashed` empty-state box (`text-muted-foreground
+  rounded-lg border border-dashed p-5...`, 7 occurrences) — fixed the same way at `bg-card/40`
+  (lighter, since these are mostly whitespace, not text-dense).
+- **`StatTile`** (Dashboard + Reports) went from a fully opaque `bg-card` to `bg-card/80
+  backdrop-blur-md` — already legible before, but explicitly asked to read as "glass" on these
+  two pages rather than a flat block.
+- **`CalendarGrid` cells** — a "no record" cell had no background at all (just a border), so the
+  date number sat directly on the image with nothing behind it. Every cell (status-colored or
+  not) now gets a `bg-card/35 backdrop-blur-sm` base layer, with the existing status gradients
+  (warning/success/primary tints) layering on top of it rather than instead of it.
+- **A real, measurable contrast bug, not new to this pass but only actually computed now:**
+  `text-primary` (`#2b44d1`) used as literal text/icon color measures **~2.2:1** against `--card`
+  (`#161f45`) by relative-luminance contrast math — nowhere near WCAG AA's 4.5:1 for text. It
+  reads fine as a *fill* (a filled button, a filled badge — white text on it is ~15.9:1), just not
+  as foreground color on a dark surface, which is exactly what "wherever blue is used" was
+  pointing at. Added `--link: #60a5fa` (same hue family, lightened — ~6.3:1 against `--card`) and
+  a `--color-link` Tailwind token from it, then swept every literal `text-primary` (not
+  `text-primary-foreground`, not `bg-primary`/`border-primary`) to `text-link` across the app:
+  links, active-nav-item text, icon-badge glyphs, the Holiday badge/calendar-cell text.
+- **Work Log's task-row "Open" link is now a real `Button` (`variant="outline"`, `asChild`
+  wrapping the `<a>`)**, not a bare underlined text link — per explicit request. No `e2e` spec
+  asserted on it by text/role, so nothing else needed to change.
+- **Verification:** 233 Vitest tests, lint, typecheck, and `next build` all clean; Dashboard,
+  Calendar, Reports, and Work Log re-checked visually in the real browser session specifically
+  for the fixed spots (table rows, calendar cells, the Open button, link-colored text), not just
+  a general look-over.
+
 ## 3. Key Architectural Decisions & Open Items
 
 - **Database: Neon Postgres, two connection strings, configured the Prisma 7 way.** Provisioned
@@ -358,6 +663,15 @@ these are just seed defaults, never hardcoded UI text.
 ### Holiday (reference calendar, not per-user data)
 `id, date (unique, date-only), name, createdAt, updatedAt`
 
+### AppSettings (whole-app config singleton, not per-user data)
+`id (fixed "singleton"), workingDays (Int[], default [1,2,3,4,5], Sun=0..Sat=6), updatedAt`
+
+One row, always. Read via an `upsert` on the fixed id (`src/lib/data/settings.ts`) so it never
+needs a seed step — the default materializes on first read. Drives which dates
+`fillMissingWorkingDays` (`src/lib/domain/workday.ts`) synthesizes a blank export row for, so a
+month/range export always has one row per expected working day, not just the ones that got a
+real `WorkDay` row from being visited.
+
 ## 5. Business Rules
 
 - `Day` is always derived from `date` — never stored as free text, never manually entered.
@@ -409,14 +723,16 @@ task-log/
 │   │   ├── reports/page.tsx
 │   │   ├── export/page.tsx
 │   │   ├── import/page.tsx
-│   │   ├── settings/page.tsx     # holiday calendar config
+│   │   ├── settings/page.tsx     # Working Days config (see §3) — Holiday CRUD still not built
+│   │   ├── */loading.tsx         # dashboard, worklog/[date], calendar/[month], skills, reports
 │   │   └── api/
 │   │       ├── export/route.ts
 │   │       ├── import/route.ts
 │   │       └── health/route.ts
 │   ├── components/
-│   │   ├── ui/                   # shadcn primitives
-│   │   ├── auth/ workday/ task/ skill/ calendar/ dashboard/ layout/
+│   │   ├── ui/                   # shadcn primitives (+ skeleton.tsx)
+│   │   ├── layout/                # header.tsx, page-header.tsx (shared page title/icon block)
+│   │   ├── auth/ workday/ task/ skill/ calendar/ dashboard/ settings/
 │   ├── lib/
 │   │   ├── db.ts                 # Prisma client singleton
 │   │   ├── data/                 # repository layer (Prisma calls only)

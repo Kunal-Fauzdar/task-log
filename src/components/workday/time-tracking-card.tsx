@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { Clock, Coffee, LogIn, LogOut, Save } from "lucide-react";
 
 import {
   endBreakAction,
@@ -12,8 +13,13 @@ import {
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
 import { formatClockTime, formatTimeInputValue, getNaiveLocalNow } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
-import { WORK_DAY_STATUS_LABELS, calculateNetWorkSeconds } from "@/lib/domain/workday";
+import {
+  WORK_DAY_STATUS_BADGE_VARIANT,
+  WORK_DAY_STATUS_LABELS,
+  calculateNetWorkSeconds,
+} from "@/lib/domain/workday";
 import { useIsToday } from "@/hooks/use-is-today";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,35 +102,46 @@ export function TimeTrackingCard({
     });
   }
 
+  const statusKey = workDay.status as keyof typeof WORK_DAY_STATUS_LABELS;
+
   return (
-    <section className="border-border flex flex-col gap-4 rounded-lg border p-4">
+    <section className="border-border bg-card border-l-primary flex flex-col gap-3.5 rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold tracking-tight">Time Tracking</h2>
-        <span className="text-muted-foreground text-sm">
-          {WORK_DAY_STATUS_LABELS[workDay.status as keyof typeof WORK_DAY_STATUS_LABELS] ?? workDay.status}
-        </span>
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+            <Clock className="size-4" />
+          </span>
+          Time Tracking
+        </h2>
+        {WORK_DAY_STATUS_LABELS[statusKey] ? (
+          <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[statusKey]}>
+            {WORK_DAY_STATUS_LABELS[statusKey]}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">{workDay.status}</span>
+        )}
       </div>
 
       {isToday && (
         <div className="flex flex-wrap items-center gap-2">
           {!workDay.checkIn && (
             <Button size="sm" onClick={handleStartWork} disabled={isPending}>
-              Start Work
+              <LogIn /> Start Work
             </Button>
           )}
           {workDay.checkIn && !workDay.checkOut && (
             <Button size="sm" onClick={handleEndWork} disabled={isPending}>
-              End Work
+              <LogOut /> End Work
             </Button>
           )}
           {workDay.checkIn && !workDay.checkOut && !isOnBreak && (
             <Button size="sm" variant="outline" onClick={handleStartBreak} disabled={isPending}>
-              Start Break
+              <Coffee /> Start Break
             </Button>
           )}
           {isOnBreak && (
             <Button size="sm" variant="outline" onClick={handleEndBreak} disabled={isPending}>
-              End Break
+              <Coffee /> End Break
             </Button>
           )}
         </div>
@@ -210,7 +227,7 @@ export function TimeTrackingCard({
 
           <div className="flex items-center gap-3">
             <Button type="submit" size="sm" disabled={isTimesPending}>
-              {isTimesPending ? "Saving…" : "Save times"}
+              <Save /> {isTimesPending ? "Saving…" : "Save times"}
             </Button>
             <span role="status" className="text-muted-foreground text-sm">
               {timesState.status === "error" && timesState.message}

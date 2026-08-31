@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { ArrowRight, Briefcase } from "lucide-react";
 
 import { formatClockTime } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import {
+  WORK_DAY_STATUS_BADGE_VARIANT,
   WORK_DAY_STATUS_LABELS,
   calculateNetWorkSeconds,
   calculateTotalTaskSeconds,
 } from "@/lib/domain/workday";
+import { Badge } from "@/components/ui/badge";
 
 type TodayWorkDay = {
   checkIn: Date | null;
@@ -19,11 +22,19 @@ type TodayWorkDay = {
 export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   if (!workDay) {
     return (
-      <section className="border-border rounded-lg border p-4">
-        <h2 className="mb-2 text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
-        <p className="text-muted-foreground text-sm">No work recorded yet today.</p>
-        <Link href="/worklog" className="text-primary mt-2 inline-block text-sm underline underline-offset-4">
-          Go to today&apos;s Work Log →
+      <section className="border-border bg-card border-l-primary rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
+        <div className="flex items-center gap-2">
+          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+            <Briefcase className="size-4" />
+          </span>
+          <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
+        </div>
+        <p className="text-muted-foreground mt-2 text-sm">No work recorded yet today.</p>
+        <Link
+          href="/worklog"
+          className="text-link mt-2 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+        >
+          Go to today&apos;s Work Log <ArrowRight className="size-3.5" />
         </Link>
       </section>
     );
@@ -33,14 +44,19 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   const totalTaskSeconds = calculateTotalTaskSeconds(workDay.tasks);
 
   return (
-    <section className="border-border rounded-lg border p-4">
+    <section className="border-border bg-card border-l-primary rounded-lg border border-l-4 p-4 shadow-md shadow-primary/5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
-        <span className="text-muted-foreground text-sm">
+        <div className="flex items-center gap-2">
+          <span className="from-primary/25 to-accent/25 text-link bg-gradient-to-br flex size-8 items-center justify-center rounded-lg shadow-sm">
+            <Briefcase className="size-4" />
+          </span>
+          <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
+        </div>
+        <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[workDay.status]}>
           {WORK_DAY_STATUS_LABELS[workDay.status]}
-        </span>
+        </Badge>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-muted-foreground">Check In</dt>
           <dd className="font-medium">{workDay.checkIn ? formatClockTime(workDay.checkIn) : "—"}</dd>
@@ -70,8 +86,11 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
           <dd className="font-medium">{formatSecondsToDuration(totalTaskSeconds)}</dd>
         </div>
       </dl>
-      <Link href="/worklog" className="text-primary mt-3 inline-block text-sm underline underline-offset-4">
-        Open today&apos;s Work Log →
+      <Link
+        href="/worklog"
+        className="text-link mt-3 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+      >
+        Open today&apos;s Work Log <ArrowRight className="size-3.5" />
       </Link>
     </section>
   );
