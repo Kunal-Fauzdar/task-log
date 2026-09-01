@@ -19,6 +19,18 @@ enum WorkDayStatus {
   IN_PROGRESS
   COMPLETED
   HOLIDAY
+  LEAVE
+}
+
+// How the user has classified the day. WORKING is the default; HOLIDAY (a public/company
+// holiday) and LEAVE (personal time off) are mutually exclusive — the /worklog day header
+// offers them as a single "Day type" selector, not two independent toggles. Non-working days
+// (weekends per AppSettings.workingDays) are NOT stored as a type — they're derived from the
+// date at read time (see fillMissingExportDays / the Excel export's "WEEKLY OFF" rows).
+enum WorkDayType {
+  WORKING
+  HOLIDAY
+  LEAVE
 }
 
 enum TaskTimerStatus {
@@ -44,8 +56,10 @@ model WorkDay {
   breakSeconds   Int           @default(0)
   breakStartedAt DateTime?
   status         WorkDayStatus @default(NOT_STARTED)
-  isHoliday      Boolean       @default(false)
-  holidayReason  String?
+  dayType        WorkDayType   @default(WORKING)
+  // Free-text label/reason for a HOLIDAY or LEAVE day (e.g. "Independence Day", "Sick"). Was
+  // `holidayReason`; renamed when LEAVE was added so it isn't holiday-specific.
+  dayNote        String?
   notes          String?
   tasks          Task[]
   createdAt      DateTime      @default(now())

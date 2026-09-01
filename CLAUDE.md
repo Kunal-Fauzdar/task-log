@@ -690,15 +690,16 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
 - **No per-row timezone handling.** All check-in/out/break/task timestamps are stored as
   naive local wall-clock time tied to `WorkDay.date`. This is a single-user, single-timezone
   tool; documented here so nobody "fixes" it into UTC conversion later.
-- **`Holiday` (reference calendar) vs `WorkDay.isHoliday` (actual recorded status) are
+- **`Holiday` (reference calendar) vs `WorkDay.dayType` (actual recorded status) are
   different things.** `Holiday` is a small reference table of known dates (e.g. national/
-  company holidays) used to auto-suggest status when a date is selected. `WorkDay.isHoliday`
-  is the actual, editable, submitted status for that day. This resolves the spec's apparent
-  overlap between "configured holiday" (§8) and "mark a day as holiday" (§13).
-- **Excel holiday-row layout is an assumption, still not visually confirmed.** No screenshot
-  has ever been provided — only the text description. Implemented in Phase 7 exactly as
-  originally planned: a single row per holiday with Date/Day filled in, Check In/Out/Break
-  blank, and `"HOLIDAY"` (plus `(reason)` if one was set) in the Task List column — see
+  company holidays) used to auto-suggest status when a date is selected. `WorkDay.dayType`
+  (`WORKING | HOLIDAY | LEAVE`) is the actual, editable, submitted status for that day. This
+  resolves the spec's apparent overlap between "configured holiday" (§8) and "mark a day as
+  holiday" (§13).
+- **Excel day-off-row layout is an assumption, still not visually confirmed.** No screenshot
+  has ever been provided — only the text description. Post-Phase-11 (see §3 top) a HOLIDAY /
+  LEAVE / WEEKLY OFF day renders as Date + Day + one bold merged cell across C..I; earlier
+  (Phase 7) it was `"HOLIDAY (reason)"` in the Task List column only — see
   `src/lib/excel/export.ts`. **Still needs a real visual review against the user's actual
   submission file** before being considered fully done; the browser-automation tool wasn't
   available during Phase 7's session, so this was verified structurally (round-trip read-back
@@ -769,6 +770,63 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
   blip rather than a logic bug). See `src/lib/data/workday.ts`. If any other "find-or-create by
   unique key" function gets added later, copy this pattern rather than a plain get-then-create.
 
+- **`WorkDay.isHoliday` boolean was replaced by a `dayType` enum
+  (`WORKING | HOLIDAY | LEAVE`) + `dayNote` (renamed from `holidayReason`).** User request:
+  "a day can be declared leave or holiday", modelled — per an `AskUserQuestion` answer — as a
+  single mutually-exclusive "Day type" selector in `WorkDayHeader`, not two toggles. Migrations
+  `20260901120000_add_leave_workday_status` (adds `LEAVE` to `WorkDayStatus` — kept as its own
+  migration because Postgres won't let a just-added enum value be used in the same transaction)
+  and `20260901120100_add_workday_type` (creates the enum, adds `dayType` backfilled from
+  `isHoliday`, renames `holidayReason`→`dayNote`, drops `isHoliday`). `deriveWorkDayStatus` now
+  takes `dayType` and can return `WorkDayStatus.LEAVE`; `WORK_DAY_STATUS_LABELS` /
+  `WORK_DAY_STATUS_BADGE_VARIANT` (badge variant `secondary`) / `CalendarGrid`'s
+  `STATUS_STYLES`/`STATUS_ICONS` (Plane icon) / the calendar legend all gained a Leave entry.
+  **When `dayType !== "WORKING"` the whole work surface on `/worklog` is frozen** (user
+  request): `TimeTrackingCard` hides Start/End Work + break buttons and the "Edit times
+  manually" form; `TaskSection` disables "Add Task" and passes `isPending || isDayOff` to
+  `TaskTable`, which forwards a new `disabled` prop to `TaskTimerControls` so the per-row
+  edit/duplicate/reorder/timer/delete controls are all inert; each spot shows a "marked as
+  holiday/leave" note. **`dayType` is lifted into a new client wrapper
+  `src/components/workday/work-day-panels.tsx`** that owns it and renders all three cards, so
+  picking Holiday/Leave in the header freezes the sibling cards *immediately* (client-side),
+  not only after Save revalidates. `WorkDayHeader` took `dayType`/`onDayTypeChange` as props
+  (was internal `useState`); the wrapper re-syncs from the server value with the usual
+  compare-in-render pattern. The `/worklog/[date]` page now renders `<WorkDayPanels>` instead
+  of the three components directly. UI-only — server actions aren't guarded
+  (`deriveWorkDayStatus` already pins status to HOLIDAY/LEAVE, and flipping the day type back to
+  Working restores everything).
+- **"Reset time tracking" (user request).** `resetWorkDayTimes(id)` (`src/lib/data/workday.ts`)
+  nulls `checkIn`/`checkOut`/`breakStartedAt` and zeroes `breakSeconds`, re-deriving `status`
+  (→ NOT_STARTED, or stays HOLIDAY/LEAVE if the day type forces it); tasks/notes/dayType are
+  untouched. `resetWorkDayTimesAction(workDayId, date)` is a `void` action (revalidates
+  `/worklog/${date}`). In `TimeTrackingCard` it's a ghost button at the bottom of the "Edit
+  times manually" section, shown only when there *is* tracked time (`checkIn || checkOut ||
+  breakSeconds > 0 || on break`), behind the standard shadcn `AlertDialog` confirm (never
+  `window.confirm`, CLAUDE.md §3). Not offered on a holiday/leave day (that whole section is
+  hidden) — switch back to Working to reset.
+  **This migration was actually applied to the Neon DB this session** (`prisma migrate deploy`
+  reached the direct connection — the P1001 sandbox restriction from Phases 8/9 wasn't in
+  effect), so a later Vercel `migrate deploy` will no-op it.
+- **Excel export changes (same user request):**
+  - A task link now renders as a hyperlink whose **display text is the literal word `link`**
+    (`{ text: "link", hyperlink: url }`), not the URL repeated as text.
+  - Non-working days now appear in month/range exports. `fillMissingWorkingDays` →
+    `fillMissingExportDays` (dropped its `workingDays` param) now back-fills **every** missing
+    calendar day up to today, not just configured working days. `buildWorkLogWorkbook` takes
+    `workingDays` and decides each row's shape: `HOLIDAY` / `LEAVE` / (weekend, nothing logged)
+    `WEEKLY OFF` all render as **Date + Day + one bold, centered cell merged across columns
+    C..I** (`addDayOffRow`); everything else is a normal row. `isWeeklyOffExportDay` (new,
+    exported from `domain/workday.ts`) is the "empty + not a working day + not declared
+    off" test.
+  - Every export ends with a bold **TOTAL** row (label in the TaskID column, sum of all task
+    durations in the Duration column, formatted `H:MM:SS`). Header row got an autofilter.
+  - `parseWorkLogWorkbook` (import) reads the merged label from **column 3** now (not the Task
+    List column), maps it to `dayType`, and **skips `WEEKLY OFF` rows** (synthetic, not stored)
+    and the trailing `TOTAL` row (no Date). It can't gate day-off detection on "TaskID empty"
+    because ExcelJS surfaces a merged range's shared value from every cell in it — it keys
+    purely off the column-3 pattern, which is safe since a real row's column 3 is always a
+    clock time or blank.
+
 ## 4. Data Model
 
 ```
@@ -782,8 +840,14 @@ Holiday  — standalone reference table, not FK-linked to WorkDay
 ### WorkDay
 `id, date (unique, date-only), checkIn (nullable), checkOut (nullable), breakSeconds (int,
 default 0), breakStartedAt (nullable — set while "on break"), status (enum:
-NOT_STARTED | IN_PROGRESS | COMPLETED | HOLIDAY), isHoliday (bool), holidayReason (nullable),
-notes (nullable), createdAt, updatedAt`
+NOT_STARTED | IN_PROGRESS | COMPLETED | HOLIDAY | LEAVE), dayType (enum:
+WORKING | HOLIDAY | LEAVE, default WORKING), dayNote (nullable — reason/label for a
+holiday/leave day, was `holidayReason`), notes (nullable), createdAt, updatedAt`
+
+`dayType` is the user's classification of the day (single mutually-exclusive selector in the
+`/worklog` header); `status` is still derived (`deriveWorkDayStatus`) — HOLIDAY/LEAVE dayType
+force the matching status, otherwise checkIn/checkOut drive it. Weekends are NOT a `dayType`
+— they're derived from `AppSettings.workingDays` at read time (Excel "WEEKLY OFF" rows).
 
 ### Task
 `id, workDayId (FK, cascade delete), taskId (string, e.g. "T-1039", validated format,
@@ -852,8 +916,14 @@ Exact header row, in this order, always:
 
 - One work day → one visual block. If it has N tasks, Date/Day/Check In/Check Out/Break are
   vertically merged across N rows; TaskID/Task List/Duration of Task/Links vary per row.
-- Holidays render as a single row (see open item above — layout to be confirmed in Phase 7).
-- Links are real Excel hyperlinks (`cell.value = { text, hyperlink }`), not plain text.
+- A whole "day off" — declared HOLIDAY, declared LEAVE, or a weekend/non-working day
+  (`AppSettings.workingDays`) with nothing logged — renders as Date + Day + **one bold, centered
+  cell merged across columns C..I** reading `HOLIDAY` / `LEAVE` / `WEEKLY OFF` (plus
+  `(dayNote)` when set). A weekend day that *does* have work logged renders as a normal row.
+- Links are real Excel hyperlinks; the **display text is the literal word `link`**
+  (`cell.value = { text: "link", hyperlink: url }`), not the URL.
+- The sheet ends with a bold **TOTAL** row: `TOTAL` in the TaskID column, the summed task
+  duration (`H:MM:SS`) in the Duration column. Header row also carries an autofilter.
 - Header row bold + filled + frozen. All data cells bordered. Task List column wraps text.
   Sensible column widths, not auto-fit-and-forget.
 - Every export is round-trip tested: write with ExcelJS, then **read the file back** with

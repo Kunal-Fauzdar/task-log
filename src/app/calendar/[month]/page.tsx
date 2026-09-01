@@ -71,6 +71,9 @@ export default async function CalendarMonthPage({
           <span className="border-brand-strong bg-brand-strong size-3 rounded-sm border" /> Holiday
         </span>
         <span className="flex items-center gap-1.5">
+          <span className="border-accent bg-secondary size-3 rounded-sm border" /> Leave
+        </span>
+        <span className="flex items-center gap-1.5">
           <span className="border-border bg-card size-3 rounded-sm border" /> No record
         </span>
       </div>

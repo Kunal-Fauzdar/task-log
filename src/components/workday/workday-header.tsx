@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { PalmtreeIcon, Save, Trash2 } from "lucide-react";
+import { PalmtreeIcon, Plane, Save, Trash2 } from "lucide-react";
 
 import { deleteWorkDayAction, updateWorkDayAction } from "@/lib/actions/workday-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
@@ -20,48 +20,55 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+type DayType = "WORKING" | "HOLIDAY" | "LEAVE";
+
+const DAY_TYPE_OPTIONS: { value: DayType; label: string }[] = [
+  { value: "WORKING", label: "Working" },
+  { value: "HOLIDAY", label: "Holiday" },
+  { value: "LEAVE", label: "Leave" },
+];
 
 type WorkDaySummary = {
   id: string;
   date: Date;
   notes: string | null;
-  isHoliday: boolean;
-  holidayReason: string | null;
+  dayType: DayType;
+  dayNote: string | null;
 };
 
 export function WorkDayHeader({
   workDay,
   dateParam,
+  dayType,
+  onDayTypeChange,
 }: {
   workDay: WorkDaySummary;
   dateParam: string;
+  // `dayType` is lifted to WorkDayPanels so picking Holiday/Leave here immediately freezes the
+  // sibling Time Tracking / Tasks cards, before Save round-trips.
+  dayType: DayType;
+  onDayTypeChange: (value: DayType) => void;
 }) {
   const [state, formAction, isPending] = useActionState(updateWorkDayAction, IDLE_ACTION_STATE);
   // Controlled, not defaultValue — see the comment in task-form-dialog.tsx for why: React 19
   // resets a <form action> after every action call that resolves, including our own
   // validation-error returns, which would otherwise silently wipe what the user just typed.
   //
-  // Also needs to re-sync when workDay changes from the server (e.g. this same Save submits and
-  // revalidates) — a plain `useState(workDay.isHoliday)` only reads the prop on first mount, so
-  // after a successful save the switch/reason/notes kept showing what was on screen just before
-  // the click instead of the just-saved value (found via manual QA in Phase 11: toggling
-  // "Mark as holiday" on and saving visually reverted the switch to off, even though the
-  // Holiday badge and a fresh page load both confirmed it saved correctly — the mutation was
-  // fine, only this component's local state was stale). Same signature/re-sync-during-render
-  // pattern as TimeTrackingCard, not an effect (would trip react-hooks/set-state-in-effect and
-  // cost an extra render).
-  const workDaySignature = `${workDay.isHoliday}|${workDay.holidayReason ?? ""}|${workDay.notes ?? ""}`;
+  // Also re-syncs when workDay changes from the server (e.g. this same Save submits and
+  // revalidates) via the signature/re-sync-during-render pattern (same as TimeTrackingCard),
+  // not an effect (would trip react-hooks/set-state-in-effect and cost an extra render).
+  // `dayType`'s own re-sync lives in the parent (WorkDayPanels) now.
+  const workDaySignature = `${workDay.dayNote ?? ""}|${workDay.notes ?? ""}`;
   const [prevSignature, setPrevSignature] = useState(workDaySignature);
-  const [isHoliday, setIsHoliday] = useState(workDay.isHoliday);
-  const [holidayReason, setHolidayReason] = useState(workDay.holidayReason ?? "");
+  const [dayNote, setDayNote] = useState(workDay.dayNote ?? "");
   const [notes, setNotes] = useState(workDay.notes ?? "");
 
   if (workDaySignature !== prevSignature) {
     setPrevSignature(workDaySignature);
-    setIsHoliday(workDay.isHoliday);
-    setHolidayReason(workDay.holidayReason ?? "");
+    setDayNote(workDay.dayNote ?? "");
     setNotes(workDay.notes ?? "");
   }
 
@@ -83,9 +90,14 @@ export function WorkDayHeader({
         </div>
         <div className="flex items-center gap-2">
           {isWeekend(workDay.date) && <Badge variant="outline">Weekend</Badge>}
-          {workDay.isHoliday && (
+          {dayType === "HOLIDAY" && (
             <Badge variant="brand">
               <PalmtreeIcon /> Holiday
+            </Badge>
+          )}
+          {dayType === "LEAVE" && (
+            <Badge variant="secondary">
+              <Plane /> Leave
             </Badge>
           )}
           <Button
@@ -120,27 +132,37 @@ export function WorkDayHeader({
       <form action={formAction} className="flex flex-col gap-3.5">
         <input type="hidden" name="id" value={workDay.id} />
         <input type="hidden" name="date" value={dateParam} />
+        <input type="hidden" name="dayType" value={dayType} />
 
-        <div className="flex items-center gap-2">
-          <Switch
-            id="isHoliday"
-            name="isHoliday"
-            checked={isHoliday}
-            onCheckedChange={setIsHoliday}
-          />
-          <Label htmlFor="isHoliday">Mark as holiday</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label>Day type</Label>
+          <div className="flex flex-wrap gap-2">
+            {DAY_TYPE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={dayType === option.value ? "default" : "outline"}
+                aria-pressed={dayType === option.value}
+                onClick={() => onDayTypeChange(option.value)}
+                className={cn(dayType !== option.value && "bg-card")}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        {isHoliday && (
+        {dayType !== "WORKING" && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="holidayReason">Holiday reason</Label>
+            <Label htmlFor="dayNote">{dayType === "HOLIDAY" ? "Holiday" : "Leave"} reason</Label>
             <Input
-              id="holidayReason"
-              name="holidayReason"
-              value={holidayReason}
-              onChange={(e) => setHolidayReason(e.target.value)}
-              placeholder="e.g. Independence Day"
-              aria-invalid={!!state.fieldErrors?.holidayReason}
+              id="dayNote"
+              name="dayNote"
+              value={dayNote}
+              onChange={(e) => setDayNote(e.target.value)}
+              placeholder={dayType === "HOLIDAY" ? "e.g. Independence Day" : "e.g. Sick leave"}
+              aria-invalid={!!state.fieldErrors?.dayNote}
             />
           </div>
         )}
@@ -159,7 +181,7 @@ export function WorkDayHeader({
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={isPending} size="sm">
-            <Save className="size-4"/> {isPending ? "Saving…" : "Save"}
+            <Save className="size-4" /> {isPending ? "Saving…" : "Save"}
           </Button>
           <span role="status" className="text-muted-foreground text-sm">
             {state.status === "error" && state.message}

@@ -16,8 +16,8 @@ export type ImportTaskRow = {
 export type ImportGroup = {
   date: string; // "YYYY-MM-DD"
   day: string;
-  isHoliday: boolean;
-  holidayReason: string | null;
+  dayType: "WORKING" | "HOLIDAY" | "LEAVE";
+  dayNote: string | null;
   checkIn: string | null; // "HH:MM"
   checkOut: string | null; // "HH:MM"
   breakSeconds: number;
@@ -89,7 +89,10 @@ function timeToMinutes(hhmm: string): number {
   return hours * 60 + minutes;
 }
 
-const HOLIDAY_PATTERN = /^HOLIDAY(?:\s*\((.+)\))?$/i;
+// A whole-day "day off" row: buildWorkLogWorkbook writes the label into the Check In column
+// (col 3) and merges it across C..I. "WEEKLY OFF" rows are synthetic (derived from the
+// weekend/working-days config at export time) and are skipped on import, not stored.
+const DAY_OFF_PATTERN = /^(HOLIDAY|LEAVE|WEEKLY OFF)(?:\s*\((.+)\))?$/i;
 
 // Parses a previously-exported WorkLog .xlsx back into candidate WorkDay/Task groups (spec
 // §30/§41: parse, validate headers, detect dates, detect multiple tasks per day, preserve
@@ -131,9 +134,22 @@ export async function parseWorkLogWorkbook(buffer: Buffer): Promise<ImportPrevie
     const row = sheet.getRow(rowNumber);
     if (isRowEmpty(row)) continue;
 
-    const taskIdRaw = String(row.getCell(6).value ?? "").trim();
-    const taskListRaw = String(row.getCell(7).value ?? "").trim();
-    const isHolidayRow = taskIdRaw === "" && HOLIDAY_PATTERN.test(taskListRaw);
+    // A row with no Date is trailing summary content (the "TOTAL" row buildWorkLogWorkbook
+    // appends), not a data row — skip it silently rather than reporting it as unparseable.
+    const dateRaw = row.getCell(1).value;
+    if (dateRaw === null || dateRaw === undefined || String(dateRaw).trim() === "") {
+      flushCurrentGroup();
+      continue;
+    }
+
+    // A whole-day "day off" row: buildWorkLogWorkbook writes the label into the Check In column
+    // (col 3) and merges it across C..I. A normal row's col 3 is always a clock time or blank,
+    // so matching the pattern there is unambiguous — and we can't additionally gate on "TaskID
+    // empty" because ExcelJS surfaces a merged range's shared value from every cell in it.
+    const dayOffCellRaw = String(row.getCell(3).value ?? "").trim();
+    const dayOffMatch = DAY_OFF_PATTERN.exec(dayOffCellRaw);
+    const taskIdRaw = dayOffMatch ? "" : String(row.getCell(6).value ?? "").trim();
+    const taskListRaw = dayOffMatch ? "" : String(row.getCell(7).value ?? "").trim();
 
     let date: Date;
     try {
@@ -144,14 +160,17 @@ export async function parseWorkLogWorkbook(buffer: Buffer): Promise<ImportPrevie
     }
     const isoDate = formatDateOnly(date);
 
-    if (isHolidayRow) {
+    if (dayOffMatch) {
       flushCurrentGroup();
-      const reasonMatch = HOLIDAY_PATTERN.exec(taskListRaw);
+      const label = dayOffMatch[1].toUpperCase();
+      // "WEEKLY OFF" rows are generated from the working-days config at export time, not stored
+      // per-day — nothing to import.
+      if (label === "WEEKLY OFF") continue;
       groups.push({
         date: isoDate,
         day: getDayName(date),
-        isHoliday: true,
-        holidayReason: reasonMatch?.[1]?.trim() || null,
+        dayType: label === "LEAVE" ? "LEAVE" : "HOLIDAY",
+        dayNote: dayOffMatch[2]?.trim() || null,
         checkIn: null,
         checkOut: null,
         breakSeconds: 0,
@@ -190,8 +209,8 @@ export async function parseWorkLogWorkbook(buffer: Buffer): Promise<ImportPrevie
       currentGroup = {
         date: isoDate,
         day: getDayName(date),
-        isHoliday: false,
-        holidayReason: null,
+        dayType: "WORKING",
+        dayNote: null,
         checkIn,
         checkOut,
         breakSeconds,

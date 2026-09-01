@@ -4,8 +4,9 @@ import { durationString } from "@/lib/validation/shared";
 
 export const workDayEditSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
-  isHoliday: z.boolean(),
-  holidayReason: z.string().trim().max(200).optional(),
+  dayType: z.enum(["WORKING", "HOLIDAY", "LEAVE"]),
+  // Reason/label for a holiday or leave day; ignored when dayType is WORKING.
+  dayNote: z.string().trim().max(200).optional(),
 });
 
 export type WorkDayEditInput = z.infer<typeof workDayEditSchema>;

@@ -8,6 +8,7 @@ import {
   deleteWorkDay,
   endBreak,
   endWork,
+  resetWorkDayTimes,
   startBreak,
   startWork,
   updateWorkDay,
@@ -25,14 +26,14 @@ export async function updateWorkDayAction(
 
   const parsed = workDayEditSchema.safeParse({
     // `?? undefined` matters here, not just style: FormData.get() returns null (not undefined)
-    // for a missing key, and holidayReason's input only exists in the DOM while "Mark as
-    // holiday" is on — so unmarking a holiday and saving always submitted holidayReason as
-    // null. Zod's z.string().optional() accepts undefined but rejects null outright, so every
-    // "remove holiday" save failed validation before reaching updateWorkDay at all (found via
-    // manual QA in Phase 11 — the switch appeared to silently revert after clicking Save).
+    // for a missing key, and the dayNote input only exists in the DOM while dayType isn't
+    // WORKING — so switching back to WORKING and saving always submitted dayNote as null.
+    // Zod's z.string().optional() accepts undefined but rejects null outright, so that save
+    // would fail validation before reaching updateWorkDay (this exact class of bug was found
+    // via manual QA in Phase 11 with the old holiday toggle).
     notes: formData.get("notes") ?? undefined,
-    isHoliday: formData.get("isHoliday") === "on",
-    holidayReason: formData.get("holidayReason") ?? undefined,
+    dayType: formData.get("dayType") ?? "WORKING",
+    dayNote: formData.get("dayNote") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -43,10 +44,11 @@ export async function updateWorkDayAction(
     };
   }
 
+  const isDayOff = parsed.data.dayType !== "WORKING";
   await updateWorkDay(id, {
     notes: parsed.data.notes || undefined,
-    isHoliday: parsed.data.isHoliday,
-    holidayReason: parsed.data.isHoliday ? parsed.data.holidayReason || undefined : null,
+    dayType: parsed.data.dayType,
+    dayNote: isDayOff ? parsed.data.dayNote || undefined : null,
   });
 
   revalidatePath(`/worklog/${date}`);
@@ -81,6 +83,11 @@ export async function endWorkAction(
   checkOutAtIso: string,
 ): Promise<void> {
   await endWork(workDayId, new Date(checkOutAtIso));
+  revalidatePath(`/worklog/${date}`);
+}
+
+export async function resetWorkDayTimesAction(workDayId: string, date: string): Promise<void> {
+  await resetWorkDayTimes(workDayId);
   revalidatePath(`/worklog/${date}`);
 }
 

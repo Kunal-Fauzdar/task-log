@@ -1,4 +1,4 @@
-import { WorkDayStatus } from "../../generated/prisma/enums.ts";
+import { WorkDayStatus, WorkDayType } from "../../generated/prisma/enums.ts";
 import { formatDateOnly } from "@/lib/domain/date";
 import { isWorkingDay } from "@/lib/domain/settings";
 
@@ -42,6 +42,7 @@ export const WORK_DAY_STATUS_LABELS: Record<WorkDayStatus, string> = {
   IN_PROGRESS: "Currently working",
   COMPLETED: "Work completed",
   HOLIDAY: "Holiday",
+  LEAVE: "Leave",
 };
 
 // Shared Badge `variant` per status — same reasoning as WORK_DAY_STATUS_LABELS above, kept in
@@ -50,24 +51,26 @@ export const WORK_DAY_STATUS_LABELS: Record<WorkDayStatus, string> = {
 // ramp: hairline -> sage -> bright green -> deepest green.
 export const WORK_DAY_STATUS_BADGE_VARIANT: Record<
   WorkDayStatus,
-  "outline" | "accent" | "success" | "brand"
+  "outline" | "accent" | "success" | "brand" | "secondary"
 > = {
   NOT_STARTED: "outline",
   IN_PROGRESS: "accent",
   COMPLETED: "success",
   HOLIDAY: "brand",
+  LEAVE: "secondary",
 };
 
 // Derives the stored WorkDayStatus enum from the fields that determine it. Holiday always
 // wins; otherwise NOT_STARTED / IN_PROGRESS / COMPLETED follow from whether check-in/out are
-// set. Called from the data layer whenever checkIn/checkOut/isHoliday change, so `status`
+// set. Called from the data layer whenever checkIn/checkOut/dayType change, so `status`
 // never drifts out of sync with the fields it's derived from.
 export function deriveWorkDayStatus(workDay: {
   checkIn: Date | null;
   checkOut: Date | null;
-  isHoliday: boolean;
+  dayType: WorkDayType;
 }): WorkDayStatus {
-  if (workDay.isHoliday) return WorkDayStatus.HOLIDAY;
+  if (workDay.dayType === WorkDayType.HOLIDAY) return WorkDayStatus.HOLIDAY;
+  if (workDay.dayType === WorkDayType.LEAVE) return WorkDayStatus.LEAVE;
   if (workDay.checkIn && workDay.checkOut) return WorkDayStatus.COMPLETED;
   if (workDay.checkIn) return WorkDayStatus.IN_PROGRESS;
   return WorkDayStatus.NOT_STARTED;
@@ -104,24 +107,23 @@ export type BlankExportDay = {
   checkIn: null;
   checkOut: null;
   breakSeconds: 0;
-  isHoliday: false;
-  holidayReason: null;
+  dayType: "WORKING";
+  dayNote: null;
   tasks: [];
 };
 
 // A month/range Excel export previously only ever showed days that already had a WorkDay row —
 // since findOrCreateWorkDayByDate only creates one when a date is actually visited, an unvisited
-// working day (e.g. one you forgot to log) silently vanished from the export instead of showing
-// up as a gap. Fixed per explicit user request: fill every configured working day in the range
-// that has no real WorkDay yet with a blank placeholder row (same shape buildWorkLogWorkbook
-// already renders for a zero-task day) — so a submission file has one row per working day, not
-// just the days that happen to have data. Only fills up to `today` — an unfilled *future*
-// working day isn't a gap, there's nothing to log yet. Days outside the configured working days
-// (e.g. weekends) with no data are correctly left out entirely, same as before.
-export function fillMissingWorkingDays<T extends { date: Date }>(
+// day silently vanished from the export instead of showing up as a gap. Fixed per explicit user
+// request: fill EVERY calendar day in the range that has no real WorkDay yet with a blank
+// placeholder (same shape buildWorkLogWorkbook renders for a zero-task day) — working days and
+// non-working days alike, so a submission file has one row per day. The Excel builder decides
+// each blank day's label from the date + `workingDays`: a non-working day (weekend) renders as a
+// "WEEKLY OFF" row, a working day as an empty work row. Only fills up to `today` — an unfilled
+// *future* day isn't a gap, there's nothing to log yet.
+export function fillMissingExportDays<T extends { date: Date }>(
   workDays: T[],
   range: { from: Date; to: Date },
-  workingDays: number[],
   today: Date,
 ): (T | BlankExportDay)[] {
   const existingDates = new Set(workDays.map((workDay) => formatDateOnly(workDay.date)));
@@ -130,14 +132,14 @@ export function fillMissingWorkingDays<T extends { date: Date }>(
   const filled: (T | BlankExportDay)[] = [...workDays];
   const cursor = new Date(range.from);
   while (cursor.getTime() <= lastDate.getTime()) {
-    if (!existingDates.has(formatDateOnly(cursor)) && isWorkingDay(cursor.getUTCDay(), workingDays)) {
+    if (!existingDates.has(formatDateOnly(cursor))) {
       filled.push({
         date: new Date(cursor),
         checkIn: null,
         checkOut: null,
         breakSeconds: 0,
-        isHoliday: false,
-        holidayReason: null,
+        dayType: "WORKING",
+        dayNote: null,
         tasks: [],
       });
     }
@@ -145,4 +147,20 @@ export function fillMissingWorkingDays<T extends { date: Date }>(
   }
 
   return filled;
+}
+
+// True when a day has nothing logged and isn't a declared holiday/leave — i.e. it should render
+// in the export as a "WEEKLY OFF" row rather than an empty work row. `isWorkingDay` here is the
+// user's AppSettings.workingDays set (Sun=0..Sat=6).
+export function isWeeklyOffExportDay(
+  day: { checkIn: Date | null; dayType: WorkDayType | "WORKING"; tasks: unknown[] },
+  workingDays: number[],
+  date: Date,
+): boolean {
+  return (
+    day.dayType === WorkDayType.WORKING &&
+    !day.checkIn &&
+    day.tasks.length === 0 &&
+    !isWorkingDay(date.getUTCDay(), workingDays)
+  );
 }

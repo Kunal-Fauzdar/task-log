@@ -10,15 +10,18 @@ function makeWorkDay(overrides: Partial<ExportWorkDay> = {}): ExportWorkDay {
     checkIn: new Date(Date.UTC(2026, 7, 24, 10, 10)),
     checkOut: new Date(Date.UTC(2026, 7, 24, 19, 25)),
     breakSeconds: 30 * 60,
-    isHoliday: false,
-    holidayReason: null,
+    dayType: "WORKING",
+    dayNote: null,
     tasks: [],
     ...overrides,
   };
 }
 
-async function bufferFrom(workDays: ExportWorkDay[]): Promise<Buffer> {
-  const workbook = await buildWorkLogWorkbook(workDays);
+async function bufferFrom(
+  workDays: ExportWorkDay[],
+  workingDays: number[] = [1, 2, 3, 4, 5],
+): Promise<Buffer> {
+  const workbook = await buildWorkLogWorkbook(workDays, workingDays);
   return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
 }
 
@@ -86,8 +89,8 @@ describe("parseWorkLogWorkbook — round trip against our own export", () => {
         checkIn: null,
         checkOut: null,
         breakSeconds: 0,
-        isHoliday: true,
-        holidayReason: "Independence Day",
+        dayType: "HOLIDAY",
+        dayNote: "Independence Day",
       }),
     ]);
 
@@ -97,10 +100,49 @@ describe("parseWorkLogWorkbook — round trip against our own export", () => {
 
     expect(preview.groups).toHaveLength(1);
     const [group] = preview.groups;
-    expect(group.isHoliday).toBe(true);
-    expect(group.holidayReason).toBe("Independence Day");
+    expect(group.dayType).toBe("HOLIDAY");
+    expect(group.dayNote).toBe("Independence Day");
     expect(group.checkIn).toBeNull();
     expect(group.tasks).toEqual([]);
+  });
+
+  it("recovers a leave row as its own group", async () => {
+    const buffer = await bufferFrom([
+      makeWorkDay({
+        checkIn: null,
+        checkOut: null,
+        breakSeconds: 0,
+        dayType: "LEAVE",
+        dayNote: "Sick leave",
+      }),
+    ]);
+
+    const preview = await parseWorkLogWorkbook(buffer);
+    expect(preview.valid).toBe(true);
+    if (!preview.valid) return;
+
+    expect(preview.groups).toHaveLength(1);
+    expect(preview.groups[0].dayType).toBe("LEAVE");
+    expect(preview.groups[0].dayNote).toBe("Sick leave");
+  });
+
+  it("skips synthetic WEEKLY OFF rows — they aren't stored per-day", async () => {
+    // Saturday 2026-08-29, nothing logged -> the export writes a WEEKLY OFF row.
+    const buffer = await bufferFrom([
+      makeWorkDay({
+        date: new Date(Date.UTC(2026, 7, 29)),
+        checkIn: null,
+        checkOut: null,
+        breakSeconds: 0,
+        tasks: [],
+      }),
+    ]);
+
+    const preview = await parseWorkLogWorkbook(buffer);
+    expect(preview.valid).toBe(true);
+    if (!preview.valid) return;
+    expect(preview.groups).toEqual([]);
+    expect(preview.rowErrors).toEqual([]);
   });
 
   it("recovers a day with zero tasks", async () => {
@@ -122,8 +164,8 @@ describe("parseWorkLogWorkbook — round trip against our own export", () => {
       }),
       makeWorkDay({
         date: new Date(Date.UTC(2026, 7, 25)),
-        isHoliday: true,
-        holidayReason: "Company holiday",
+        dayType: "HOLIDAY",
+        dayNote: "Company holiday",
         checkIn: null,
         checkOut: null,
       }),
@@ -135,7 +177,7 @@ describe("parseWorkLogWorkbook — round trip against our own export", () => {
     if (!preview.valid) return;
 
     expect(preview.groups.map((g) => g.date)).toEqual(["2026-08-24", "2026-08-25", "2026-08-26"]);
-    expect(preview.groups[1].isHoliday).toBe(true);
+    expect(preview.groups[1].dayType).toBe("HOLIDAY");
   });
 });
 

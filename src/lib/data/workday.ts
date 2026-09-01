@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Prisma } from "../../generated/prisma/client.ts";
+import { WorkDayType } from "../../generated/prisma/enums.ts";
 import { tolerateAlreadyDeleted } from "@/lib/data/shared";
 import { deriveWorkDayStatus } from "@/lib/domain/workday";
 
@@ -95,16 +96,16 @@ export async function findOrCreateWorkDayByDate(
 
 export async function updateWorkDay(
   id: string,
-  data: { notes?: string; isHoliday?: boolean; holidayReason?: string | null },
+  data: { notes?: string; dayType?: WorkDayType; dayNote?: string | null },
 ) {
   const current = await prisma.workDay.findUniqueOrThrow({ where: { id } });
-  const isHoliday = data.isHoliday ?? current.isHoliday;
+  const dayType = data.dayType ?? current.dayType;
 
   return prisma.workDay.update({
     where: { id },
     data: {
       ...data,
-      status: deriveWorkDayStatus({ checkIn: current.checkIn, checkOut: current.checkOut, isHoliday }),
+      status: deriveWorkDayStatus({ checkIn: current.checkIn, checkOut: current.checkOut, dayType }),
     },
   });
 }
@@ -118,7 +119,7 @@ export async function startWork(id: string, checkInAt: Date) {
     where: { id },
     data: {
       checkIn: checkInAt,
-      status: deriveWorkDayStatus({ checkIn: checkInAt, checkOut: current.checkOut, isHoliday: current.isHoliday }),
+      status: deriveWorkDayStatus({ checkIn: checkInAt, checkOut: current.checkOut, dayType: current.dayType }),
     },
   });
 }
@@ -153,7 +154,7 @@ export async function endWork(id: string, checkOutAt: Date) {
       checkOut: checkOutAt,
       breakSeconds,
       breakStartedAt: null,
-      status: deriveWorkDayStatus({ checkIn: current.checkIn, checkOut: checkOutAt, isHoliday: current.isHoliday }),
+      status: deriveWorkDayStatus({ checkIn: current.checkIn, checkOut: checkOutAt, dayType: current.dayType }),
     },
   });
 }
@@ -200,8 +201,25 @@ export async function updateWorkDayTimes(
       status: deriveWorkDayStatus({
         checkIn: data.checkIn,
         checkOut: data.checkOut,
-        isHoliday: current.isHoliday,
+        dayType: current.dayType,
       }),
+    },
+  });
+}
+
+// Clears all time-tracking fields (check-in/out, accumulated break, any in-progress break) back
+// to a fresh state, without touching tasks / notes / dayType. `status` re-derives to
+// NOT_STARTED (or stays HOLIDAY/LEAVE if the day type forces it).
+export async function resetWorkDayTimes(id: string) {
+  const current = await prisma.workDay.findUniqueOrThrow({ where: { id } });
+  return prisma.workDay.update({
+    where: { id },
+    data: {
+      checkIn: null,
+      checkOut: null,
+      breakSeconds: 0,
+      breakStartedAt: null,
+      status: deriveWorkDayStatus({ checkIn: null, checkOut: null, dayType: current.dayType }),
     },
   });
 }

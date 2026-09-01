@@ -27,7 +27,7 @@ export async function importWorkDayGroups(groups: ImportGroupInput[]): Promise<I
 
       const checkIn = group.checkIn ? combineDateAndTime(date, group.checkIn) : null;
       const checkOut = group.checkOut ? combineDateAndTime(date, group.checkOut) : null;
-      const holidayReason = group.holidayReason?.trim() || null;
+      const dayNote = group.dayNote?.trim() || null;
 
       await prisma.$transaction(async (tx) => {
         const workDay = await tx.workDay.create({
@@ -36,9 +36,9 @@ export async function importWorkDayGroups(groups: ImportGroupInput[]): Promise<I
             checkIn,
             checkOut,
             breakSeconds: group.breakSeconds,
-            isHoliday: group.isHoliday,
-            holidayReason,
-            status: deriveWorkDayStatus({ checkIn, checkOut, isHoliday: group.isHoliday }),
+            dayType: group.dayType,
+            dayNote,
+            status: deriveWorkDayStatus({ checkIn, checkOut, dayType: group.dayType }),
           },
         });
 

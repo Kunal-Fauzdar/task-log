@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Coffee, LogIn, LogOut, Save } from "lucide-react";
+import { Coffee, LogIn, LogOut, RotateCcw, Save } from "lucide-react";
 
 import {
   endBreakAction,
   endWorkAction,
+  resetWorkDayTimesAction,
   startBreakAction,
   startWorkAction,
   updateWorkDayTimesAction,
@@ -19,6 +20,16 @@ import {
   calculateNetWorkSeconds,
 } from "@/lib/domain/workday";
 import { useIsToday } from "@/hooks/use-is-today";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +43,7 @@ type WorkDaySummary = {
   breakSeconds: number;
   breakStartedAt: Date | null;
   status: string;
+  dayType: "WORKING" | "HOLIDAY" | "LEAVE";
 };
 
 export function TimeTrackingCard({
@@ -102,7 +114,19 @@ export function TimeTrackingCard({
     });
   }
 
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  function handleReset() {
+    setConfirmingReset(false);
+    startTransition(async () => {
+      await resetWorkDayTimesAction(workDay.id, dateParam);
+    });
+  }
+
   const statusKey = workDay.status as keyof typeof WORK_DAY_STATUS_LABELS;
+  const isDayOff = workDay.dayType === "HOLIDAY" || workDay.dayType === "LEAVE";
+  const dayOffLabel = workDay.dayType === "HOLIDAY" ? "holiday" : "leave";
+  const hasTrackedTime =
+    workDay.checkIn !== null || workDay.checkOut !== null || workDay.breakSeconds > 0 || isOnBreak;
 
   return (
     <section className="bg-accent/15 flex flex-col gap-3.5 rounded-lg p-5 shadow-md">
@@ -119,29 +143,36 @@ export function TimeTrackingCard({
         )}
       </div>
 
-      {isToday && (
-        <div className="flex flex-wrap items-center gap-2">
-          {!workDay.checkIn && (
-            <Button size="sm" onClick={handleStartWork} disabled={isPending}>
-              <LogIn className="size-4" /> Start Work
-            </Button>
-          )}
-          {workDay.checkIn && !workDay.checkOut && (
-            <Button size="sm" onClick={handleEndWork} disabled={isPending}>
-              <LogOut /> End Work
-            </Button>
-          )}
-          {workDay.checkIn && !workDay.checkOut && !isOnBreak && (
-            <Button size="sm" variant="outline" onClick={handleStartBreak} disabled={isPending}>
-              <Coffee /> Start Break
-            </Button>
-          )}
-          {isOnBreak && (
-            <Button size="sm" variant="outline" onClick={handleEndBreak} disabled={isPending}>
-              <Coffee /> End Break
-            </Button>
-          )}
-        </div>
+      {isDayOff ? (
+        <p className="text-muted-foreground border-accent/40 bg-card/50 rounded-md border border-dashed px-3 py-2 text-sm">
+          This day is marked as {dayOffLabel} — time tracking is off. Set the day type back to
+          Working above to check in or edit times.
+        </p>
+      ) : (
+        isToday && (
+          <div className="flex flex-wrap items-center gap-2">
+            {!workDay.checkIn && (
+              <Button size="sm" onClick={handleStartWork} disabled={isPending}>
+                <LogIn className="size-4" /> Start Work
+              </Button>
+            )}
+            {workDay.checkIn && !workDay.checkOut && (
+              <Button size="sm" onClick={handleEndWork} disabled={isPending}>
+                <LogOut /> End Work
+              </Button>
+            )}
+            {workDay.checkIn && !workDay.checkOut && !isOnBreak && (
+              <Button size="sm" variant="outline" onClick={handleStartBreak} disabled={isPending}>
+                <Coffee /> Start Break
+              </Button>
+            )}
+            {isOnBreak && (
+              <Button size="sm" variant="outline" onClick={handleEndBreak} disabled={isPending}>
+                <Coffee /> End Break
+              </Button>
+            )}
+          </div>
+        )
       )}
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
@@ -173,6 +204,7 @@ export function TimeTrackingCard({
         </div>
       </dl>
 
+      {!isDayOff && (
       <details className="text-sm">
         <summary className="text-muted-foreground cursor-pointer select-none">
           Edit times manually
@@ -232,7 +264,42 @@ export function TimeTrackingCard({
             </span>
           </div>
         </form>
+
+        {hasTrackedTime && (
+          <div className="border-border/60 mt-4 flex flex-wrap items-center gap-3 border-t pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmingReset(true)}
+              disabled={isPending}
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <RotateCcw /> {isPending ? "Resetting…" : "Reset time tracking"}
+            </Button>
+            <span className="text-muted-foreground text-xs">
+              Clears check-in, check-out, and break for this day. Tasks are kept.
+            </span>
+          </div>
+        )}
       </details>
+      )}
+
+      <AlertDialog open={confirmingReset} onOpenChange={setConfirmingReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset time tracking?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This clears check-in, check-out, and break time for this day. Logged tasks and notes
+              are not affected. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

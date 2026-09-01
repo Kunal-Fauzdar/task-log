@@ -27,8 +27,8 @@ describe("importWorkDayGroups — real database data end to end", () => {
     const groups: ImportGroupInput[] = [
       {
         date: "2099-09-10", // duplicate — must be skipped, not overwritten
-        isHoliday: false,
-        holidayReason: null,
+        dayType: "WORKING",
+        dayNote: null,
         checkIn: "09:00",
         checkOut: "17:00",
         breakSeconds: 1800,
@@ -38,8 +38,8 @@ describe("importWorkDayGroups — real database data end to end", () => {
       },
       {
         date: "2099-09-11", // new — should import with two tasks
-        isHoliday: false,
-        holidayReason: null,
+        dayType: "WORKING",
+        dayNote: null,
         checkIn: "09:00",
         checkOut: "18:00",
         breakSeconds: 3600,
@@ -50,8 +50,8 @@ describe("importWorkDayGroups — real database data end to end", () => {
       },
       {
         date: "2099-09-12", // new — holiday, no tasks
-        isHoliday: true,
-        holidayReason: "Test Holiday",
+        dayType: "HOLIDAY",
+        dayNote: "Test Holiday",
         checkIn: null,
         checkOut: null,
         breakSeconds: 0,
@@ -82,6 +82,6 @@ describe("importWorkDayGroups — real database data end to end", () => {
 
     const holidayWorkDay = await prisma.workDay.findUnique({ where: { date: TEST_DATE_HOLIDAY } });
     expect(holidayWorkDay?.status).toBe("HOLIDAY");
-    expect(holidayWorkDay?.holidayReason).toBe("Test Holiday");
+    expect(holidayWorkDay?.dayNote).toBe("Test Holiday");
   });
 });

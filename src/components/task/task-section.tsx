@@ -31,13 +31,20 @@ export function TaskSection({
   tasks,
   netWorkSeconds,
   availableSkills,
+  dayType,
 }: {
   workDayId: string;
   dateParam: string;
   tasks: TaskRecord[];
   netWorkSeconds: number | null;
   availableSkills: AvailableSkill[];
+  dayType: "WORKING" | "HOLIDAY" | "LEAVE";
 }) {
+  // On a holiday / leave day there's no work to log — freeze task creation and the per-row
+  // controls (edit / duplicate / reorder / timer / delete). Switching the day type back to
+  // Working in the header re-enables everything.
+  const isDayOff = dayType !== "WORKING";
+  const dayOffLabel = dayType === "HOLIDAY" ? "holiday" : "leave";
   const [dialogTask, setDialogTask] = useState<TaskRecord | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [taskPendingDelete, setTaskPendingDelete] = useState<TaskRecord | null>(null);
@@ -89,21 +96,29 @@ export function TaskSection({
           <ListChecks className="text-link size-5" />
           Tasks
         </h2>
-        <Button size="sm" onClick={() => setIsCreating(true)}>
+        <Button size="sm" onClick={() => setIsCreating(true)} disabled={isDayOff}>
           <Plus /> Add Task
         </Button>
       </div>
 
       {tasks.length === 0 ? (
         <p className="text-muted-foreground bg-secondary/50 rounded-lg p-6 text-center text-sm">
-          No tasks logged for this day yet.
+          {isDayOff
+            ? `This day is marked as ${dayOffLabel} — no tasks needed.`
+            : "No tasks logged for this day yet."}
         </p>
       ) : (
         <>
+          {isDayOff && (
+            <p className="text-muted-foreground border-accent/40 bg-secondary/40 rounded-md border border-dashed px-3 py-2 text-sm">
+              This day is marked as {dayOffLabel}. Existing tasks are shown read-only — set the
+              day type back to Working to edit them.
+            </p>
+          )}
           <TaskTable
             tasks={tasks}
             dateParam={dateParam}
-            isPending={isPending}
+            isPending={isPending || isDayOff}
             onEdit={setDialogTask}
             onDelete={setTaskPendingDelete}
             onDuplicate={handleDuplicate}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, Clock3, PalmtreeIcon } from "lucide-react";
+import { CheckCircle2, Clock3, PalmtreeIcon, Plane } from "lucide-react";
 
 import { formatDateOnly } from "@/lib/domain/date";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const STATUS_STYLES: Record<string, string> = {
   IN_PROGRESS: "bg-accent/25 border-accent text-foreground font-medium",
   COMPLETED: "bg-success/35 border-success text-success-foreground font-medium",
   HOLIDAY: "bg-brand-strong border-brand-strong text-brand-strong-foreground font-medium",
+  LEAVE: "bg-secondary border-accent text-secondary-foreground font-medium",
 };
 
 // A small icon per status, redundant with (not a replacement for) the color coding — keeps the
@@ -21,6 +22,7 @@ const STATUS_ICONS: Record<string, typeof CheckCircle2 | undefined> = {
   IN_PROGRESS: Clock3,
   COMPLETED: CheckCircle2,
   HOLIDAY: PalmtreeIcon,
+  LEAVE: Plane,
 };
 
 type CalendarWorkDay = {

@@ -5,7 +5,8 @@ import {
   calculateNetWorkSeconds,
   calculateTotalTaskSeconds,
   deriveWorkDayStatus,
-  fillMissingWorkingDays,
+  fillMissingExportDays,
+  isWeeklyOffExportDay,
   hasDurationDiscrepancy,
 } from "@/lib/domain/workday";
 import { parseDateOnly } from "@/lib/domain/date";
@@ -62,85 +63,127 @@ describe("hasDurationDiscrepancy", () => {
 describe("deriveWorkDayStatus", () => {
   it("holiday wins regardless of check-in/out", () => {
     expect(
-      deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), isHoliday: true }),
+      deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), dayType: "HOLIDAY" }),
     ).toBe("HOLIDAY");
   });
 
+  it("leave wins regardless of check-in/out", () => {
+    expect(
+      deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), dayType: "LEAVE" }),
+    ).toBe("LEAVE");
+  });
+
   it("NOT_STARTED with no check-in", () => {
-    expect(deriveWorkDayStatus({ checkIn: null, checkOut: null, isHoliday: false })).toBe(
+    expect(deriveWorkDayStatus({ checkIn: null, checkOut: null, dayType: "WORKING" })).toBe(
       "NOT_STARTED",
     );
   });
 
   it("IN_PROGRESS with check-in but no check-out", () => {
-    expect(deriveWorkDayStatus({ checkIn: new Date(), checkOut: null, isHoliday: false })).toBe(
+    expect(deriveWorkDayStatus({ checkIn: new Date(), checkOut: null, dayType: "WORKING" })).toBe(
       "IN_PROGRESS",
     );
   });
 
   it("COMPLETED with both check-in and check-out", () => {
     expect(
-      deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), isHoliday: false }),
+      deriveWorkDayStatus({ checkIn: new Date(), checkOut: new Date(), dayType: "WORKING" }),
     ).toBe("COMPLETED");
   });
 });
 
-describe("fillMissingWorkingDays", () => {
-  const MON_FRI = [1, 2, 3, 4, 5];
-
-  it("fills every configured working day in range that has no real WorkDay yet", () => {
-    // 2026-08-01 Sat, 08-02 Sun, 08-03 Mon, 08-04 Tue, 08-05 Wed, 08-06 Thu, 08-07 Fri
+describe("fillMissingExportDays", () => {
+  it("fills every calendar day in range with no real WorkDay yet — weekends included", () => {
+    // 2026-08-01 Sat .. 08-07 Fri
     const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
     const existing = [{ date: parseDateOnly("2026-08-04") }]; // already logged Tuesday
     const today = parseDateOnly("2026-08-10"); // whole range is in the past
 
-    const filled = fillMissingWorkingDays(existing, range, MON_FRI, today);
+    const filled = fillMissingExportDays(existing, range, today);
     const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
 
-    // Weekend days (08-01, 08-02) never appear; 08-04 appears once (the real entry, not
-    // duplicated); the three other Mon-Fri days are filled in blank.
-    expect(dates).toEqual(["2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07"]);
+    // Every day appears once; 08-04 is the real entry, not duplicated.
+    expect(dates).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+      "2026-08-03",
+      "2026-08-04",
+      "2026-08-05",
+      "2026-08-06",
+      "2026-08-07",
+    ]);
   });
 
-  it("does not fill a working day past today — nothing to log yet", () => {
+  it("does not fill a day past today — nothing to log yet", () => {
     const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
-    const today = parseDateOnly("2026-08-05"); // Wednesday — Thu/Fri haven't happened yet
+    const today = parseDateOnly("2026-08-05");
 
-    const filled = fillMissingWorkingDays([], range, MON_FRI, today);
+    const filled = fillMissingExportDays([], range, today);
     const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
 
-    expect(dates).toEqual(["2026-08-03", "2026-08-04", "2026-08-05"]);
+    expect(dates).toEqual([
+      "2026-08-01",
+      "2026-08-02",
+      "2026-08-03",
+      "2026-08-04",
+      "2026-08-05",
+    ]);
   });
 
-  it("blank filled entries have the same shape a zero-task day already renders as", () => {
+  it("blank filled entries carry dayType WORKING and no note", () => {
     const range = { from: parseDateOnly("2026-08-03"), to: parseDateOnly("2026-08-03") };
-    const [filled] = fillMissingWorkingDays([], range, MON_FRI, parseDateOnly("2026-08-03"));
+    const [filled] = fillMissingExportDays([], range, parseDateOnly("2026-08-03"));
 
     expect(filled).toMatchObject({
       checkIn: null,
       checkOut: null,
       breakSeconds: 0,
-      isHoliday: false,
-      holidayReason: null,
+      dayType: "WORKING",
+      dayNote: null,
       tasks: [],
     });
   });
 
-  it("respects a custom working-days configuration (e.g. Sun-Thu)", () => {
-    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-07") };
-    const sunThu = [0, 1, 2, 3, 4];
+  it("leaves a real WorkDay untouched (not re-filled)", () => {
+    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-01") };
+    const existing = [{ date: parseDateOnly("2026-08-01") }];
 
-    const filled = fillMissingWorkingDays([], range, sunThu, parseDateOnly("2026-08-10"));
-    const dates = filled.map((w) => w.date.toISOString().slice(0, 10)).sort();
+    const filled = fillMissingExportDays(existing, range, parseDateOnly("2026-08-01"));
+    expect(filled).toEqual(existing);
+  });
+});
 
-    expect(dates).toEqual(["2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06"]);
+describe("isWeeklyOffExportDay", () => {
+  const MON_FRI = [1, 2, 3, 4, 5];
+  const emptyDay = { checkIn: null, dayType: "WORKING" as const, tasks: [] as unknown[] };
+
+  it("is true for an empty non-working day (weekend)", () => {
+    expect(isWeeklyOffExportDay(emptyDay, MON_FRI, parseDateOnly("2026-08-01"))).toBe(true); // Sat
   });
 
-  it("leaves a real WorkDay on a non-working day untouched (e.g. worked a Saturday)", () => {
-    const range = { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-01") };
-    const existing = [{ date: parseDateOnly("2026-08-01") }]; // Saturday, not in MON_FRI
+  it("is false for a working day", () => {
+    expect(isWeeklyOffExportDay(emptyDay, MON_FRI, parseDateOnly("2026-08-03"))).toBe(false); // Mon
+  });
 
-    const filled = fillMissingWorkingDays(existing, range, MON_FRI, parseDateOnly("2026-08-01"));
-    expect(filled).toEqual(existing);
+  it("is false when the weekend day has work logged", () => {
+    expect(
+      isWeeklyOffExportDay(
+        { checkIn: new Date(), dayType: "WORKING", tasks: [] },
+        MON_FRI,
+        parseDateOnly("2026-08-01"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is false for a declared holiday/leave (those render with their own label)", () => {
+    expect(
+      isWeeklyOffExportDay({ checkIn: null, dayType: "HOLIDAY", tasks: [] }, MON_FRI, parseDateOnly("2026-08-01")),
+    ).toBe(false);
+  });
+
+  it("respects a custom working-days set (Sun-Thu makes Friday the weekly off)", () => {
+    const sunThu = [0, 1, 2, 3, 4];
+    expect(isWeeklyOffExportDay(emptyDay, sunThu, parseDateOnly("2026-08-07"))).toBe(true); // Fri
+    expect(isWeeklyOffExportDay(emptyDay, sunThu, parseDateOnly("2026-08-02"))).toBe(false); // Sun
   });
 });

@@ -39,40 +39,35 @@ test("work log day: add, edit, and delete a task; toggle holiday", async ({ page
 
   await expect(page.getByText("Total task duration: 2:00:00")).toBeVisible();
 
-  // Holiday toggle reveals the reason field, and actually persists in both directions — not
-  // just a client-side visibility check. A prior version of this test only toggled the switch
-  // without ever saving, which missed a real bug: unmarking a holiday and saving always failed
-  // validation (FormData.get() returns null, not undefined, for the now-absent holidayReason
-  // field, and Zod's .optional() rejects null) — see CLAUDE.md §3.
-  await page.getByRole("switch", { name: "Mark as holiday" }).click();
+  // Day type = Holiday reveals the reason field, and actually persists in both directions — not
+  // just a client-side visibility check. A prior version of this test only toggled without ever
+  // saving, which missed a real bug: switching back to Working and saving always failed
+  // validation (FormData.get() returns null, not undefined, for the now-absent reason field,
+  // and Zod's .optional() rejects null) — see CLAUDE.md §3.
+  const holidayButton = page.getByRole("button", { name: "Holiday", exact: true });
+  const workingButton = page.getByRole("button", { name: "Working", exact: true });
+
+  await holidayButton.click();
   await page.getByLabel("Holiday reason").fill("Phase 11 QA Holiday");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("switch", { name: "Mark as holiday" })).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
+  await expect(holidayButton).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Holiday reason")).toHaveValue("Phase 11 QA Holiday");
   // Scoped to WorkDayHeader specifically — TimeTrackingCard's status badge also reads "Holiday"
-  // once isHoliday is true (holiday overrides WorkDayStatus, CLAUDE.md §5), so an unscoped badge
-  // locator matches both.
-  const workDayHeaderSection = page
-    .getByRole("switch", { name: "Mark as holiday" })
-    .locator("xpath=ancestor::section[1]");
+  // once the day type is HOLIDAY (holiday overrides WorkDayStatus, CLAUDE.md §5), so an unscoped
+  // badge locator matches both.
+  const workDayHeaderSection = holidayButton.locator("xpath=ancestor::section[1]");
   await expect(
     workDayHeaderSection.locator('[data-slot="badge"]', { hasText: "Holiday" }),
   ).toBeVisible();
 
-  await page.getByRole("switch", { name: "Mark as holiday" }).click();
+  await workingButton.click();
   await expect(page.getByLabel("Holiday reason")).toHaveCount(0);
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("switch", { name: "Mark as holiday" })).toHaveAttribute(
-    "aria-checked",
-    "false",
-  );
+  await expect(workingButton).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Holiday reason")).toHaveCount(0);
 
   // Delete the task, with the accessible confirmation dialog

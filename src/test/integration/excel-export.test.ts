@@ -43,14 +43,14 @@ describe("Excel export — real database data end to end", () => {
     });
 
     const workDays = await listWorkDays({ from: TEST_DATE_A, to: TEST_DATE_A });
-    const workbook = await buildWorkLogWorkbook(workDays);
+    const workbook = await buildWorkLogWorkbook(workDays, [1, 2, 3, 4, 5]);
     const buffer = await workbook.xlsx.writeBuffer();
 
     const reloaded = new ExcelJS.Workbook();
     await reloaded.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = reloaded.worksheets[0];
 
-    expect(sheet.rowCount).toBe(3); // header + 2 tasks
+    expect(sheet.rowCount).toBe(4); // header + 2 tasks + totals
     expect(sheet.getRow(2).getCell(1).value).toBe("10/01/2099");
     expect(sheet.getRow(2).getCell(3).value).toBe("10:10 AM");
     expect(sheet.getRow(2).getCell(4).value).toBe("7:25 PM");
@@ -71,18 +71,18 @@ describe("Excel export — real database data end to end", () => {
     const workDay2 = await createWorkDay({ date: TEST_DATE_B });
     await prisma.workDay.update({
       where: { id: workDay2.id },
-      data: { isHoliday: true, holidayReason: "Test Holiday", status: "HOLIDAY" },
+      data: { dayType: "HOLIDAY", dayNote: "Test Holiday", status: "HOLIDAY" },
     });
 
     const workDays = await listWorkDays({ from: TEST_DATE_A, to: TEST_DATE_B });
-    const workbook = await buildWorkLogWorkbook(workDays);
+    const workbook = await buildWorkLogWorkbook(workDays, [1, 2, 3, 4, 5]);
     const buffer = await workbook.xlsx.writeBuffer();
 
     const reloaded = new ExcelJS.Workbook();
     await reloaded.xlsx.load(buffer as unknown as ArrayBuffer);
     const sheet = reloaded.worksheets[0];
 
-    expect(sheet.rowCount).toBe(3); // header + day1 task row + holiday row
-    expect(sheet.getRow(3).getCell(7).value).toBe("HOLIDAY (Test Holiday)");
+    expect(sheet.rowCount).toBe(4); // header + day1 task row + holiday row + totals
+    expect(sheet.getRow(3).getCell(3).value).toBe("HOLIDAY (Test Holiday)");
   });
 });

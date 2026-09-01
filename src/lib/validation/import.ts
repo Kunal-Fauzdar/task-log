@@ -26,8 +26,8 @@ const importTaskSchema = z.object({
 export const importGroupSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
-    isHoliday: z.boolean(),
-    holidayReason: z.string().trim().max(200).nullable().optional(),
+    dayType: z.enum(["WORKING", "HOLIDAY", "LEAVE"]),
+    dayNote: z.string().trim().max(200).nullable().optional(),
     checkIn: timeHHMM,
     checkOut: timeHHMM,
     breakSeconds: z.number().int().min(0),

@@ -17,8 +17,8 @@ test("uploads a WorkLog export, previews it, and imports the new day", async ({ 
     checkIn: new Date(Date.UTC(2099, 9, 20, 9, 0)),
     checkOut: new Date(Date.UTC(2099, 9, 20, 17, 0)),
     breakSeconds: 1800,
-    isHoliday: false,
-    holidayReason: null,
+    dayType: "WORKING",
+    dayNote: null,
     tasks: [
       {
         taskId: "T-8001",
@@ -28,7 +28,7 @@ test("uploads a WorkLog export, previews it, and imports the new day", async ({ 
       },
     ],
   };
-  const workbook = await buildWorkLogWorkbook([workDay]);
+  const workbook = await buildWorkLogWorkbook([workDay], [1, 2, 3, 4, 5]);
   const filePath = testInfo.outputPath("worklog-import-new.xlsx");
   await workbook.xlsx.writeFile(filePath);
 
@@ -73,11 +73,11 @@ test("flags a day that already exists as a duplicate and does not let it be re-i
         checkIn: new Date(Date.UTC(2099, 9, 21, 9, 0)),
         checkOut: new Date(Date.UTC(2099, 9, 21, 17, 0)),
         breakSeconds: 0,
-        isHoliday: false,
-        holidayReason: null,
+        dayType: "WORKING",
+        dayNote: null,
         tasks: [{ taskId: "T-8002", description: "Should be skipped", durationSeconds: 3600, link: null }],
       },
-    ]);
+    ], [1, 2, 3, 4, 5]);
     const filePath = testInfo.outputPath("worklog-import-duplicate.xlsx");
     await workbook.xlsx.writeFile(filePath);
 

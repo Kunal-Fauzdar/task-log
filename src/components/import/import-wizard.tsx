@@ -244,9 +244,11 @@ export function ImportWizard() {
                         <TableCell>{statusBadge(group)}</TableCell>
                         <TableCell className="tabular-nums">{group.tasks.length}</TableCell>
                         <TableCell className="tabular-nums">
-                          {group.isHoliday
+                          {group.dayType === "HOLIDAY"
                             ? "Holiday"
-                            : formatSecondsToDuration(groupTotalSeconds(group))}
+                            : group.dayType === "LEAVE"
+                              ? "Leave"
+                              : formatSecondsToDuration(groupTotalSeconds(group))}
                         </TableCell>
                       </TableRow>
                       {group.errors.length > 0 && (

@@ -5,9 +5,7 @@ import { listSkills } from "@/lib/data/skill";
 import { parseDateOnly } from "@/lib/domain/date";
 import { calculateNetWorkSeconds } from "@/lib/domain/workday";
 import { BackButton } from "@/components/layout/back-button";
-import { TimeTrackingCard } from "@/components/workday/time-tracking-card";
-import { WorkDayHeader } from "@/components/workday/workday-header";
-import { TaskSection } from "@/components/task/task-section";
+import { WorkDayPanels } from "@/components/workday/work-day-panels";
 
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -32,12 +30,9 @@ export default async function WorkLogDayPage({
   return (
     <div className="flex flex-col gap-5">
       <BackButton fallbackHref="/calendar" />
-      <WorkDayHeader workDay={workDay} dateParam={dateParam} />
-      <TimeTrackingCard workDay={workDay} dateParam={dateParam} />
-      <TaskSection
-        workDayId={workDay.id}
+      <WorkDayPanels
+        workDay={workDay}
         dateParam={dateParam}
-        tasks={workDay.tasks}
         netWorkSeconds={netWorkSeconds}
         availableSkills={availableSkills}
       />

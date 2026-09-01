@@ -18,11 +18,14 @@ import type { TaskRecord } from "@/components/task/task-form-dialog";
 export function TaskTimerControls({
   task,
   dateParam,
+  disabled = false,
 }: {
   task: TaskRecord;
   dateParam: string;
+  disabled?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
+  const isDisabled = isPending || disabled;
 
   function run(action: (id: string, date: string) => Promise<void>) {
     startTransition(async () => {
@@ -41,7 +44,7 @@ export function TaskTimerControls({
           variant="ghost"
           size="icon"
           aria-label={`Start timer for ${task.taskId}`}
-          disabled={isPending}
+          disabled={isDisabled}
           onClick={() => run(startTaskTimerAction)}
         >
           <Play />
@@ -52,7 +55,7 @@ export function TaskTimerControls({
           variant="ghost"
           size="icon"
           aria-label={`Pause timer for ${task.taskId}`}
-          disabled={isPending}
+          disabled={isDisabled}
           onClick={() => run(pauseTaskTimerAction)}
         >
           <Pause />
@@ -63,7 +66,7 @@ export function TaskTimerControls({
           variant="ghost"
           size="icon"
           aria-label={`Resume timer for ${task.taskId}`}
-          disabled={isPending}
+          disabled={isDisabled}
           onClick={() => run(resumeTaskTimerAction)}
         >
           <Play />
@@ -74,7 +77,7 @@ export function TaskTimerControls({
           variant="ghost"
           size="icon"
           aria-label={`Complete ${task.taskId}`}
-          disabled={isPending}
+          disabled={isDisabled}
           onClick={() => run(completeTaskTimerAction)}
         >
           <Check />

@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import { EXCEL_HEADERS, buildWorkLogWorkbook, type ExportWorkDay } from "@/lib/excel/export";
 
+const MON_FRI = [1, 2, 3, 4, 5];
+
 // "The browser downloaded a file" is never sufficient (spec §29) — every test here writes the
 // workbook to a real buffer and reads it back with a *fresh* ExcelJS instance, asserting on
 // what actually got persisted to the file, not just what we told the in-memory model to do.
-async function buildAndReload(workDays: ExportWorkDay[]) {
-  const workbook = await buildWorkLogWorkbook(workDays);
+async function buildAndReload(workDays: ExportWorkDay[], workingDays: number[] = MON_FRI) {
+  const workbook = await buildWorkLogWorkbook(workDays, workingDays);
   const buffer = await workbook.xlsx.writeBuffer();
 
   const reloaded = new ExcelJS.Workbook();
@@ -22,11 +24,17 @@ function makeWorkDay(overrides: Partial<ExportWorkDay> = {}): ExportWorkDay {
     checkIn: new Date(Date.UTC(2026, 7, 24, 10, 10)),
     checkOut: new Date(Date.UTC(2026, 7, 24, 19, 25)),
     breakSeconds: 30 * 60,
-    isHoliday: false,
-    holidayReason: null,
+    dayType: "WORKING",
+    dayNote: null,
     tasks: [],
     ...overrides,
   };
+}
+
+// Every export now ends with a bold TOTAL row (sum of all task durations). The last data row is
+// therefore sheet.rowCount - 1.
+function lastDataRow(sheet: ExcelJS.Worksheet) {
+  return sheet.rowCount - 1;
 }
 
 describe("buildWorkLogWorkbook — headers", () => {
@@ -54,7 +62,7 @@ describe("buildWorkLogWorkbook — a day with multiple tasks", () => {
     });
     const { sheet } = await buildAndReload([workDay]);
 
-    expect(sheet.rowCount).toBe(3); // header + 2 task rows
+    expect(sheet.rowCount).toBe(4); // header + 2 task rows + totals
     expect(sheet.getRow(2).getCell(6).value).toBe("T-1039");
     expect(sheet.getRow(3).getCell(6).value).toBe("T-1219");
     expect(sheet.getRow(2).getCell(1).value).toBe("08/24/2026");
@@ -137,8 +145,28 @@ describe("buildWorkLogWorkbook — formatting", () => {
   });
 });
 
+describe("buildWorkLogWorkbook — a totals row", () => {
+  it("appends a bold TOTAL row summing every task's duration", async () => {
+    const { sheet } = await buildAndReload([
+      makeWorkDay({
+        date: new Date(Date.UTC(2026, 7, 24)),
+        tasks: [{ taskId: "T-1", description: "A", durationSeconds: 3 * 3600, link: null }],
+      }),
+      makeWorkDay({
+        date: new Date(Date.UTC(2026, 7, 25)),
+        tasks: [{ taskId: "T-2", description: "B", durationSeconds: 90 * 60, link: null }],
+      }),
+    ]);
+
+    const totals = sheet.getRow(sheet.rowCount);
+    expect(totals.getCell(6).value).toBe("TOTAL");
+    expect(totals.getCell(8).value).toBe("4:30:00");
+    expect(totals.getCell(8).font?.bold).toBe(true);
+  });
+});
+
 describe("buildWorkLogWorkbook — hyperlinks", () => {
-  it("writes a real Excel hyperlink, not plain text", async () => {
+  it("writes a real hyperlink whose display text is 'link' and target is the URL", async () => {
     const workDay = makeWorkDay({
       tasks: [
         {
@@ -153,7 +181,7 @@ describe("buildWorkLogWorkbook — hyperlinks", () => {
     const cell = sheet.getRow(2).getCell(9);
     expect(cell.value).toMatchObject({
       hyperlink: "https://example.com/T-1",
-      text: "https://example.com/T-1",
+      text: "link",
     });
   });
 
@@ -166,38 +194,91 @@ describe("buildWorkLogWorkbook — hyperlinks", () => {
   });
 });
 
-describe("buildWorkLogWorkbook — holidays", () => {
-  it("writes a single row with HOLIDAY in the Task List column", async () => {
+describe("buildWorkLogWorkbook — holiday / leave / weekly-off rows", () => {
+  it("writes a holiday as Date + Day + a merged bold HOLIDAY cell across C..I", async () => {
     const workDay = makeWorkDay({
       checkIn: null,
       checkOut: null,
       breakSeconds: 0,
-      isHoliday: true,
-      holidayReason: "Independence Day",
+      dayType: "HOLIDAY",
+      dayNote: "Independence Day",
     });
     const { sheet } = await buildAndReload([workDay]);
 
-    expect(sheet.rowCount).toBe(2); // header + 1 holiday row
+    expect(sheet.rowCount).toBe(3); // header + 1 holiday row + totals
     expect(sheet.getRow(2).getCell(1).value).toBe("08/24/2026");
     expect(sheet.getRow(2).getCell(2).value).toBe("Monday");
-    expect(sheet.getRow(2).getCell(3).value).toBeFalsy(); // Check In blank
-    expect(sheet.getRow(2).getCell(4).value).toBeFalsy(); // Check Out blank
-    expect(sheet.getRow(2).getCell(7).value).toBe("HOLIDAY (Independence Day)");
+    expect(sheet.getRow(2).getCell(3).value).toBe("HOLIDAY (Independence Day)");
+    expect(sheet.getRow(2).getCell(3).font?.bold).toBe(true);
+    // C..I merged into the label cell
+    for (let col = 4; col <= 9; col++) {
+      expect(sheet.getCell(2, col).isMerged).toBe(true);
+      expect(sheet.getCell(2, col).master.address).toBe(sheet.getCell(2, 3).address);
+    }
   });
 
   it("holiday without a reason just says HOLIDAY", async () => {
-    const workDay = makeWorkDay({ isHoliday: true, holidayReason: null });
+    const workDay = makeWorkDay({ dayType: "HOLIDAY", dayNote: null, checkIn: null, checkOut: null });
     const { sheet } = await buildAndReload([workDay]);
-    expect(sheet.getRow(2).getCell(7).value).toBe("HOLIDAY");
+    expect(sheet.getRow(2).getCell(3).value).toBe("HOLIDAY");
+  });
+
+  it("writes a leave day with a merged bold LEAVE cell", async () => {
+    const workDay = makeWorkDay({
+      dayType: "LEAVE",
+      dayNote: "Sick",
+      checkIn: null,
+      checkOut: null,
+    });
+    const { sheet } = await buildAndReload([workDay]);
+    expect(sheet.getRow(2).getCell(3).value).toBe("LEAVE (Sick)");
+    expect(sheet.getRow(2).getCell(3).font?.bold).toBe(true);
+  });
+
+  it("writes a blank non-working day (weekend) as a merged bold WEEKLY OFF cell", async () => {
+    // 2026-08-29 is a Saturday — not in MON_FRI, nothing logged.
+    const saturday = makeWorkDay({
+      date: new Date(Date.UTC(2026, 7, 29)),
+      checkIn: null,
+      checkOut: null,
+      breakSeconds: 0,
+      tasks: [],
+    });
+    const { sheet } = await buildAndReload([saturday]);
+    expect(sheet.getRow(2).getCell(3).value).toBe("WEEKLY OFF");
+    expect(sheet.getRow(2).getCell(3).font?.bold).toBe(true);
+  });
+
+  it("a weekend day with work logged renders as a normal work row, not WEEKLY OFF", async () => {
+    const workedSaturday = makeWorkDay({
+      date: new Date(Date.UTC(2026, 7, 29)),
+      tasks: [{ taskId: "T-1", description: "Weekend work", durationSeconds: 3600, link: null }],
+    });
+    const { sheet } = await buildAndReload([workedSaturday]);
+    expect(sheet.getRow(2).getCell(6).value).toBe("T-1");
+  });
+
+  it("respects a custom working-days set — a Friday can be the weekly off", async () => {
+    const friday = makeWorkDay({
+      date: new Date(Date.UTC(2026, 7, 28)), // Friday
+      checkIn: null,
+      checkOut: null,
+      breakSeconds: 0,
+      tasks: [],
+    });
+    const { sheet } = await buildAndReload([friday], [0, 1, 2, 3, 4]); // Sun-Thu
+    expect(sheet.getRow(2).getCell(3).value).toBe("WEEKLY OFF");
   });
 });
 
 describe("buildWorkLogWorkbook — empty task days", () => {
-  it("writes a single row with blank task columns when a day has no tasks", async () => {
+  it("writes a single row with blank task columns when a working day has no tasks", async () => {
     const { sheet } = await buildAndReload([makeWorkDay({ tasks: [] })]);
-    expect(sheet.rowCount).toBe(2);
+    expect(sheet.rowCount).toBe(3); // header + 1 day + totals
     expect(sheet.getRow(2).getCell(6).value).toBeFalsy();
     expect(sheet.getRow(2).getCell(7).value).toBeFalsy();
+    // A working day with a check-in still shows the time, not WEEKLY OFF.
+    expect(sheet.getRow(2).getCell(3).value).toBe("10:10 AM");
   });
 });
 
@@ -225,8 +306,8 @@ describe("buildWorkLogWorkbook — multi-day (date-range) export", () => {
     });
     const holiday = makeWorkDay({
       date: new Date(Date.UTC(2026, 7, 25)),
-      isHoliday: true,
-      holidayReason: "Company holiday",
+      dayType: "HOLIDAY",
+      dayNote: "Company holiday",
       checkIn: null,
       checkOut: null,
     });
@@ -234,8 +315,9 @@ describe("buildWorkLogWorkbook — multi-day (date-range) export", () => {
 
     const { sheet } = await buildAndReload([normal, holiday, empty]);
 
-    expect(sheet.rowCount).toBe(4); // header + 3 days, none with multiple tasks
-    expect(sheet.getRow(3).getCell(7).value).toBe("HOLIDAY (Company holiday)");
+    expect(sheet.rowCount).toBe(5); // header + 3 days + totals
+    expect(sheet.getRow(3).getCell(3).value).toBe("HOLIDAY (Company holiday)");
+    expect(lastDataRow(sheet)).toBe(4);
   });
 });
 
@@ -263,7 +345,5 @@ describe("buildWorkLogWorkbook — the file itself opens", () => {
   it("produces a non-empty buffer that a fresh ExcelJS instance can load without throwing", async () => {
     const { buffer } = await buildAndReload([makeWorkDay({ tasks: [] })]);
     expect(buffer.byteLength).toBeGreaterThan(0);
-    // buildAndReload already proved `load()` succeeds — this test documents that as the
-    // explicit "can the file actually be opened" check spec §29 asks for.
   });
 });

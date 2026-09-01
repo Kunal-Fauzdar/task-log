@@ -8,6 +8,7 @@ import {
   findOrCreateWorkDayByDate,
   getWorkDayByDate,
   listWorkDays,
+  resetWorkDayTimes,
   updateWorkDay,
 } from "@/lib/data/workday";
 import { createTask } from "@/lib/data/task";
@@ -116,29 +117,87 @@ describe("findOrCreateWorkDayByDate", () => {
 });
 
 describe("updateWorkDay", () => {
-  it("updates notes without touching holiday fields", async () => {
+  it("updates notes without touching day-type fields", async () => {
     const workDay = await createWorkDay({ date: TEST_DATE_A });
     const updated = await updateWorkDay(workDay.id, { notes: "Worked from home" });
     expect(updated.notes).toBe("Worked from home");
-    expect(updated.isHoliday).toBe(false);
+    expect(updated.dayType).toBe("WORKING");
   });
 
-  it("marking isHoliday true also sets status to HOLIDAY", async () => {
+  it("setting dayType HOLIDAY also sets status to HOLIDAY", async () => {
     const workDay = await createWorkDay({ date: TEST_DATE_A });
     const updated = await updateWorkDay(workDay.id, {
-      isHoliday: true,
-      holidayReason: "Company holiday",
+      dayType: "HOLIDAY",
+      dayNote: "Company holiday",
     });
     expect(updated.status).toBe("HOLIDAY");
-    expect(updated.holidayReason).toBe("Company holiday");
+    expect(updated.dayNote).toBe("Company holiday");
   });
 
-  it("unmarking isHoliday reverts status to NOT_STARTED", async () => {
+  it("setting dayType LEAVE also sets status to LEAVE", async () => {
     const workDay = await createWorkDay({ date: TEST_DATE_A });
-    await updateWorkDay(workDay.id, { isHoliday: true });
-    const reverted = await updateWorkDay(workDay.id, { isHoliday: false, holidayReason: null });
+    const updated = await updateWorkDay(workDay.id, { dayType: "LEAVE", dayNote: "Sick" });
+    expect(updated.status).toBe("LEAVE");
+    expect(updated.dayNote).toBe("Sick");
+  });
+
+  it("reverting dayType to WORKING reverts status to NOT_STARTED", async () => {
+    const workDay = await createWorkDay({ date: TEST_DATE_A });
+    await updateWorkDay(workDay.id, { dayType: "HOLIDAY" });
+    const reverted = await updateWorkDay(workDay.id, { dayType: "WORKING", dayNote: null });
     expect(reverted.status).toBe("NOT_STARTED");
-    expect(reverted.holidayReason).toBeNull();
+    expect(reverted.dayNote).toBeNull();
+  });
+});
+
+describe("resetWorkDayTimes", () => {
+  it("clears check-in/out and break, and reverts status to NOT_STARTED", async () => {
+    const workDay = await createWorkDay({ date: TEST_DATE_A });
+    await prisma.workDay.update({
+      where: { id: workDay.id },
+      data: {
+        checkIn: new Date(Date.UTC(2099, 0, 1, 9, 0)),
+        checkOut: new Date(Date.UTC(2099, 0, 1, 17, 0)),
+        breakSeconds: 1800,
+        breakStartedAt: new Date(),
+        status: "COMPLETED",
+      },
+    });
+
+    const reset = await resetWorkDayTimes(workDay.id);
+    expect(reset.checkIn).toBeNull();
+    expect(reset.checkOut).toBeNull();
+    expect(reset.breakSeconds).toBe(0);
+    expect(reset.breakStartedAt).toBeNull();
+    expect(reset.status).toBe("NOT_STARTED");
+  });
+
+  it("keeps status HOLIDAY when the day is a holiday", async () => {
+    const workDay = await createWorkDay({ date: TEST_DATE_A });
+    await updateWorkDay(workDay.id, { dayType: "HOLIDAY" });
+    await prisma.workDay.update({
+      where: { id: workDay.id },
+      data: { checkIn: new Date(Date.UTC(2099, 0, 1, 9, 0)), breakSeconds: 600 },
+    });
+
+    const reset = await resetWorkDayTimes(workDay.id);
+    expect(reset.checkIn).toBeNull();
+    expect(reset.breakSeconds).toBe(0);
+    expect(reset.status).toBe("HOLIDAY");
+  });
+
+  it("does not touch tasks", async () => {
+    const workDay = await createWorkDay({ date: TEST_DATE_A });
+    await createTask({ workDayId: workDay.id, taskId: "T-9999", description: "Keep me", order: 0 });
+    await prisma.workDay.update({
+      where: { id: workDay.id },
+      data: { checkIn: new Date(Date.UTC(2099, 0, 1, 9, 0)) },
+    });
+
+    await resetWorkDayTimes(workDay.id);
+    const tasks = await prisma.task.findMany({ where: { workDayId: workDay.id } });
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].taskId).toBe("T-9999");
   });
 });
 

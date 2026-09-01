@@ -71,7 +71,7 @@ export function TaskTable({
                 )}
               </TableCell>
               <TableCell>
-                <TaskTimerControls task={task} dateParam={dateParam} />
+                <TaskTimerControls task={task} dateParam={dateParam} disabled={isPending} />
               </TableCell>
               <TableCell>
                 {task.link && (

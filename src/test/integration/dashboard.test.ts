@@ -45,7 +45,7 @@ describe("getRecentWorkDays", () => {
     const workDay = await createWorkDay({ date: TEST_DATE_HOLIDAY });
     await prisma.workDay.update({
       where: { id: workDay.id },
-      data: { isHoliday: true, status: "HOLIDAY" },
+      data: { dayType: "HOLIDAY", status: "HOLIDAY" },
     });
 
     const recent = await getRecentWorkDays(50);

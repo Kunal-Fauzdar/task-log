@@ -1,14 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Search, GraduationCap } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { deleteSkillAction } from "@/lib/actions/skill-actions";
-import {
-  SKILL_CATEGORY_ICON_CLASS,
-  SKILL_CATEGORY_LABELS,
-  SKILL_CATEGORY_ORDER,
-} from "@/lib/domain/skill";
+import { SKILL_CATEGORY_LABELS, SKILL_CATEGORY_ORDER } from "@/lib/domain/skill";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SkillCard, type SkillCardData } from "@/components/skill/skill-card";
 import { SkillFormDialog } from "@/components/skill/skill-form-dialog";
-import { cn } from "@/lib/utils";
 
 type CategoryFilter = "ALL" | (typeof SKILL_CATEGORY_ORDER)[number];
 

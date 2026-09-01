@@ -4,12 +4,12 @@ import { listWorkDays } from "@/lib/data/workday";
 import { getWorkingDays } from "@/lib/data/settings";
 import { parseDateOnly, parseMonthOnly } from "@/lib/domain/date";
 import { getExportFilename } from "@/lib/domain/export";
-import { fillMissingWorkingDays, getMonthRange } from "@/lib/domain/workday";
+import { fillMissingExportDays, getMonthRange } from "@/lib/domain/workday";
 import { buildWorkLogWorkbook } from "@/lib/excel/export";
 import { exportQuerySchema } from "@/lib/validation/export";
 
 // Read-only overview-style computation (same reasoning as Dashboard/Calendar/Reports, CLAUDE.md
-// §3) — used only to cap how far fillMissingWorkingDays back-fills blank rows, not to record
+// §3) — used only to cap how far fillMissingExportDays back-fills blank rows, not to record
 // anything, so server-UTC "today" being off by a few hours at a timezone boundary is harmless.
 function getServerToday(): Date {
   const now = new Date();
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
   }
 
   const [workDays, workingDays] = await Promise.all([listWorkDays({ from, to }), getWorkingDays()]);
-  const filledWorkDays = fillMissingWorkingDays(workDays, { from, to }, workingDays, getServerToday());
-  const workbook = await buildWorkLogWorkbook(filledWorkDays);
+  const filledWorkDays = fillMissingExportDays(workDays, { from, to }, getServerToday());
+  const workbook = await buildWorkLogWorkbook(filledWorkDays, workingDays);
   const buffer = await workbook.xlsx.writeBuffer();
 
   return new NextResponse(buffer, {
