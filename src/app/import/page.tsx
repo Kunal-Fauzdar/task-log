@@ -16,7 +16,7 @@ export default function ImportPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <ImportWizard />
 
-        <aside className="border-border bg-card flex h-fit flex-col gap-3 rounded-lg border p-4 shadow-sm">
+        <aside className="bg-muted flex h-fit flex-col gap-3 rounded-lg p-4 shadow-sm">
           <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
             <ShieldCheck className="text-link size-4" />
             How it works

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { CalendarRange, PalmtreeIcon, Save, Trash2 } from "lucide-react";
+import { PalmtreeIcon, Save, Trash2 } from "lucide-react";
 
 import { deleteWorkDayAction, updateWorkDayAction } from "@/lib/actions/workday-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
@@ -76,12 +76,9 @@ export function WorkDayHeader({
   }
 
   return (
-    <section className="border-border bg-card flex flex-col gap-3.5 rounded-lg border border-l-2 border-l-accent p-5">
+    <section className="bg-secondary flex flex-col gap-3.5 rounded-lg p-5 shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
-            <CalendarRange className="size-4" />
-          </span>
           <h1 className="font-display text-2xl">{formatDisplayDate(workDay.date)}</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -162,7 +159,7 @@ export function WorkDayHeader({
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={isPending} size="sm">
-            <Save /> {isPending ? "Saving…" : "Save"}
+            <Save className="size-4"/> {isPending ? "Saving…" : "Save"}
           </Button>
           <span role="status" className="text-muted-foreground text-sm">
             {state.status === "error" && state.message}

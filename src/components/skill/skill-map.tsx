@@ -100,7 +100,7 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground bg-secondary/50 rounded-lg p-6 text-center text-sm">
           No skills match your search.
         </p>
       )}
@@ -110,14 +110,6 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
           group.skills.length > 0 && (
             <section key={group.category} className="flex flex-col gap-2.5">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-                <span
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-lg",
-                    SKILL_CATEGORY_ICON_CLASS[group.category],
-                  )}
-                >
-                  <GraduationCap className="size-3.5" />
-                </span>
                 {SKILL_CATEGORY_LABELS[group.category]}{" "}
                 <span className="text-muted-foreground text-sm font-normal">
                   ({group.skills.length})

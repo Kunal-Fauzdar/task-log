@@ -95,7 +95,7 @@ export function TaskSection({
       </div>
 
       {tasks.length === 0 ? (
-        <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground bg-secondary/50 rounded-lg p-6 text-center text-sm">
           No tasks logged for this day yet.
         </p>
       ) : (
@@ -115,7 +115,7 @@ export function TaskSection({
           {isOverBudget && (
             <p
               role="alert"
-              className="border-warning bg-warning/10 text-warning-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
+              className="border-destructive/40 bg-destructive/10 text-destructive flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
             >
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               Total task duration ({formatSecondsToDuration(totalSeconds)}) exceeds net work

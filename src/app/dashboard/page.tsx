@@ -1,12 +1,4 @@
-import {
-  CalendarCheck2,
-  CheckCircle2,
-  Clock,
-  LayoutDashboard,
-  ListTodo,
-  Timer,
-  TrendingUp,
-} from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 
 import { getRecentWorkDays, getWorkDayByDate, listWorkDays } from "@/lib/data/workday";
 import { formatDisplayDate } from "@/lib/domain/date";
@@ -67,45 +59,38 @@ export default async function DashboardPage() {
 
       <section className="flex flex-col gap-2.5">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <TrendingUp className="text-link size-5" />
           Statistics
         </h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           <StatTile
             label="Today's hours"
             value={formatSecondsToDuration(todaysHours)}
-            icon={Clock}
             accent="info"
           />
           <StatTile
             label="This week's hours"
             value={formatSecondsToDuration(weekHours)}
-            icon={CalendarCheck2}
             accent="info"
           />
           <StatTile
             label="This month's hours"
             value={formatSecondsToDuration(monthHours)}
-            icon={CalendarCheck2}
             accent="primary"
           />
           <StatTile
             label="Tasks this month"
             value={String(monthTaskCount)}
-            icon={ListTodo}
             accent="primary"
           />
           <StatTile
             label="Completed this month"
             value={String(monthCompletedTaskCount)}
-            icon={CheckCircle2}
             accent="success"
           />
           <StatTile
             label="Avg. task duration"
             value={formatSecondsToDuration(averageTaskSeconds)}
-            icon={Timer}
-            accent="warning"
+            accent="primary"
           />
         </div>
       </section>

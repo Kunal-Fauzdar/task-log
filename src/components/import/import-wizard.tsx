@@ -29,7 +29,7 @@ function groupTotalSeconds(group: PreviewGroup): number {
 
 function statusBadge(group: PreviewGroup) {
   if (group.errors.length > 0) return <Badge variant="destructive">Invalid</Badge>;
-  if (group.isDuplicate) return <Badge variant="warning">Already exists</Badge>;
+  if (group.isDuplicate) return <Badge variant="outline">Already exists</Badge>;
   return <Badge variant="success">New</Badge>;
 }
 
@@ -119,7 +119,7 @@ export function ImportWizard() {
 
   if (stage === "done" && result) {
     return (
-      <section className="border-success/30 bg-success/5 flex flex-col gap-4 rounded-lg border p-6 shadow-sm">
+      <section className="bg-success/25 flex flex-col gap-4 rounded-lg p-6 shadow-sm">
         <h2 className="text-success flex items-center gap-2 text-lg font-semibold tracking-tight">
           <CheckCircle2 className="size-5" />
           Import complete
@@ -150,7 +150,7 @@ export function ImportWizard() {
     <div className="flex flex-col gap-4">
       <form
         onSubmit={handleUpload}
-        className="border-border bg-card flex flex-col gap-3 rounded-lg border p-4 shadow-sm"
+        className="bg-secondary flex flex-col gap-3 rounded-lg p-4 shadow-sm"
       >
         <label
           htmlFor="import-file"
@@ -178,7 +178,7 @@ export function ImportWizard() {
           />
         </label>
         <Button type="submit" disabled={stage === "uploading"} className="self-start">
-          <Upload /> {stage === "uploading" ? "Reading file…" : "Upload & Preview"}
+          <Upload className="size-4" /> {stage === "uploading" ? "Reading file…" : "Upload & Preview"}
         </Button>
       </form>
 
@@ -213,7 +213,7 @@ export function ImportWizard() {
             Existing days are never overwritten — duplicates and invalid rows are unchecked by
             default. Review the selection, then confirm.
           </p>
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow>

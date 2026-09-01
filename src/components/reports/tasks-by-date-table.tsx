@@ -13,14 +13,14 @@ import {
 export function TasksByDateTable({ rows }: { rows: TasksByDate[] }) {
   if (rows.length === 0) {
     return (
-      <p className="text-muted-foreground bg-card rounded-lg border border-border border-dashed p-6 text-center text-sm">
+      <p className="text-muted-foreground bg-secondary/50 rounded-lg p-6 text-center text-sm">
         No tasks in this range.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
       <Table>
         <TableHeader>
           <TableRow>

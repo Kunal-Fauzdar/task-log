@@ -438,6 +438,64 @@ entirely.
   was flaky this session, so exact responsive/mobile rendering is **not** re-verified — the
   Tailwind breakpoints are unchanged from prior passes.
 
+**Ninth pass — strict palette lockdown + card fills instead of borders (user: "remove colors
+like orange, grey and only use colors mentioned in design.md. Rather than adding border to
+cards, color that card").** A small, targeted follow-up to the eighth pass, not a retheme:
+- **`--warning` (the muted amber) is gone entirely** — token removed from `globals.css` and
+  `@theme inline`, `warning` variant removed from `Badge`, `warning` key removed from
+  `StatTile`'s accent map. design.md's Aether palette is green-only and defines no
+  warning/error hue, so "needs attention" now shares the single reserved off-green signal with
+  "invalid/error": `--destructive` (the muted brick). The Task discrepancy banner
+  (`task-section.tsx`) and the import "already exists" badge were repointed —
+  banner → `border-destructive/40 bg-destructive/10 text-destructive`, badge →
+  `variant="outline"` (a skipped duplicate is a hairline, not an error). The two decorative
+  `accent="warning"` StatTiles (Dashboard "Avg. task duration", Reports "Total task duration")
+  were never warnings — just colour variety — and are now `accent="primary"`.
+- **Neutral grey *fills* swept to greens** (design.md's grey `#4B5563` survives only as
+  `--muted-foreground` text, which is its `text-secondary` role): `SKILL_CATEGORY_PROGRESS_CLASS`
+  LESS_THAN_30 `bg-muted-foreground/45` → `bg-accent/40`; its icon-class equivalent
+  `bg-muted` → `bg-secondary`; `StatTile`'s `bg-foreground/20` top rule deleted with the rule
+  itself; `CalendarGrid`'s weekend-column `bg-muted/50` → `bg-secondary/60`. The mobile-drawer
+  scrim `bg-foreground/20` is a translucent modal overlay, not a UI colour — left as-is.
+- **Cards are filled, not bordered.** The `border border-l-2 border-l-accent` decoration on the
+  three hero cards (`TodayWorkCard`, `TimeTrackingCard`, `WorkDayHeader`) and the plain
+  `border border-border` on `StatTile`, the Export/Settings/Reports-filter form cards, the
+  Export/Import info `<aside>`s, the Import upload card, the skill cards, and the 7 dashed
+  empty-state boxes were all replaced with a `bg-secondary` (soft-green `#d7e6cf`) fill — a
+  panel that reads as distinct from the pale-green page without a hairline. `SkillCard` also
+  dropped its per-category left-border (`SKILL_CATEGORY_BORDER_CLASS`, now deleted from
+  `skill.ts` — the Progress bar colour + the page's category grouping already encode the band).
+  White `bg-card` inputs/tables inside these panels now pop against the green. Data-table
+  wrappers keep their `border-border` (green-tinted, and dense data needs an edge) — the
+  directive was about cards, not grids.
+- **Stale icon imports removed** after the user's own pre-pass edits stripped the icon glyphs:
+  `TrendingUp` (Dashboard), `CalendarRange`/`GraduationCap` (Reports), `Briefcase`
+  (TodayWorkCard), `Clock` (TimeTrackingCard), `CalendarRange` (WorkDayHeader), plus a second
+  round (`CalendarCheck2`/`CheckCircle2`/`Clock`/`ListTodo`/`Timer` on Dashboard, `Zap` on
+  ExportQuickLinks, `CalendarRange` on ExportRangeForm) after the user removed the `<h2>`/
+  StatTile glyphs. `StatTile` keeps `icon?: LucideIcon` in its prop type (accepted, not
+  rendered) so the `icon={…}` call sites in `reports/page.tsx` still typecheck.
+- **Then (same message follow-up): "use different colors for different cards … add a little
+  shadow, they look bland."** A flat sheet of one `bg-secondary` green was the problem. Cards
+  now carry a **soft `shadow-sm`** (`shadow-md` on the three hero cards) and one of a
+  small set of design.md-green tints chosen by the card's *purpose*, so sections read as
+  distinct:
+  - `StatTile` — new `ACCENT_SURFACE` map keyed on the existing `accent` prop: `info` (hours) →
+    `bg-accent/15`, `primary` (counts) → `bg-secondary`, `success` (completed) → `bg-success/25`.
+  - `SkillCard` — new `SKILL_CATEGORY_SURFACE_CLASS` in `skill.ts` tints the whole card by
+    proficiency band (`bg-muted` → `bg-secondary` → `bg-success/25`), which is what actually
+    brings back the per-category cue the eighth/ninth pass dropped with the left border.
+  - Hero cards: `TodayWorkCard` + `WorkDayHeader` stay `bg-secondary`; `TimeTrackingCard` →
+    `bg-accent/15` so the two stacked cards on `/worklog/[date]` don't merge.
+  - Forms: `bg-secondary` for the "primary action" ones (ExportQuickLinks, WorkingDaysForm,
+    Import upload), `bg-accent/15` for the "filter/refine" ones (ExportRangeForm,
+    ReportDateFilterForm); Export/Import info `<aside>`s → the quieter `bg-muted`; the Import
+    success panel → `bg-success/25`.
+  - Data-table wrappers: kept white `bg-card` + border, added `shadow-sm`.
+- **Verification:** `npm run typecheck`, `npm run lint`, `npx next build`, and
+  `vitest run src/test/unit` (168 passed) all clean. Not re-checked in a live browser this
+  session.
+
 ## 3. Key Architectural Decisions & Open Items
 
 - **Database: Neon Postgres, two connection strings, configured the Prisma 7 way.** Provisioned

@@ -83,7 +83,7 @@ export function CalendarGrid({
                   ? STATUS_STYLES[workDay.status]
                   : cn(
                       "hover:border-accent hover:bg-secondary",
-                      isWeekendCol ? "bg-muted/50 border-border/60" : "bg-card border-border",
+                      isWeekendCol ? "bg-secondary/60 border-border/60" : "bg-card border-border",
                     ),
                 isToday && "ring-ring ring-2 ring-offset-2 ring-offset-background",
               )}

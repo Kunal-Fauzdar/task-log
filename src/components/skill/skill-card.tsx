@@ -5,8 +5,8 @@ import { History, Pencil, Trash2 } from "lucide-react";
 
 import { formatDateOnly } from "@/lib/domain/date";
 import {
-  SKILL_CATEGORY_BORDER_CLASS,
   SKILL_CATEGORY_PROGRESS_CLASS,
+  SKILL_CATEGORY_SURFACE_CLASS,
   formatProficiencyChange,
 } from "@/lib/domain/skill";
 import { Button } from "@/components/ui/button";
@@ -32,13 +32,12 @@ export function SkillCard({
   const [showHistory, setShowHistory] = useState(false);
   const category = skill.category as keyof typeof SKILL_CATEGORY_PROGRESS_CLASS;
   const progressClass = SKILL_CATEGORY_PROGRESS_CLASS[category];
-  const borderClass = SKILL_CATEGORY_BORDER_CLASS[category];
 
   return (
     <div
       className={cn(
-        "border-border bg-card hover:border-accent flex flex-col gap-2 rounded-lg border border-l-2 p-4 transition-colors",
-        borderClass,
+        "flex flex-col gap-2 rounded-lg p-4 shadow-sm",
+        SKILL_CATEGORY_SURFACE_CLASS[category],
       )}
     >
       <div className="flex items-start justify-between gap-2">

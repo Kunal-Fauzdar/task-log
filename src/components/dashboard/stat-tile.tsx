@@ -2,43 +2,31 @@ import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// A quiet metric readout: mono label, large number, optional context line. No glass, no
-// gradient wash, no hover lift. The accent only tints a thin top rule and the icon glyph so
-// related tiles group visually — it never fills the card.
-const ACCENT_RULE = {
-  primary: "bg-foreground/20",
-  success: "bg-success",
-  warning: "bg-warning",
-  info: "bg-accent",
-} as const;
-
-const ACCENT_GLYPH = {
-  primary: "text-muted-foreground",
-  success: "text-link",
-  warning: "text-warning",
-  info: "text-link",
+// A quiet metric readout: mono label, large number, optional context line. The tile is a filled
+// panel with a soft shadow; `accent` picks one of three design.md-green tints so tiles group by
+// the kind of metric they carry (hours / counts / completed) rather than all reading the same.
+const ACCENT_SURFACE = {
+  primary: "bg-secondary",
+  success: "bg-success/25",
+  info: "bg-accent/15",
 } as const;
 
 export function StatTile({
   label,
   value,
   hint,
-  icon: Icon,
   accent = "primary",
 }: {
   label: string;
   value: string;
   hint?: string;
+  // Accepted for call-site stability; not currently rendered.
   icon?: LucideIcon;
-  accent?: keyof typeof ACCENT_RULE;
+  accent?: keyof typeof ACCENT_SURFACE;
 }) {
   return (
-    <div className="border-border bg-card relative flex flex-col gap-2 overflow-hidden rounded-lg border p-4">
-      <span className={cn("absolute inset-x-0 top-0 h-0.5", ACCENT_RULE[accent])} />
-      <div className="flex items-start justify-between gap-2">
-        <p className="eyebrow">{label}</p>
-        {Icon && <Icon className={cn("size-4 shrink-0", ACCENT_GLYPH[accent])} aria-hidden />}
-      </div>
+    <div className={cn("flex flex-col gap-2 rounded-lg p-4 shadow-sm", ACCENT_SURFACE[accent])}>
+      <p className="eyebrow">{label}</p>
       <p className="text-foreground text-[1.75rem] leading-none font-semibold tracking-tight tabular-nums">
         {value}
       </p>

@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils"
 //   accent   -> in progress / ongoing          (sage)
 //   success  -> completed / positive           (bright green)
 //   brand    -> holiday / strongest emphasis   (deepest green)
-//   warning  -> needs attention                (earthy amber)
-//   destructive -> invalid / error             (earthy brick)
+//   destructive -> invalid / error / attention (earthy brick — the one non-green signal)
 const badgeVariants = cva(
   "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive [&>svg]:pointer-events-none [&>svg]:size-3",
   {
@@ -25,7 +24,6 @@ const badgeVariants = cva(
         success: "bg-success text-success-foreground [a&]:hover:bg-success/85",
         brand:
           "bg-brand-strong text-brand-strong-foreground [a&]:hover:bg-brand-strong/90",
-        warning: "bg-warning text-warning-foreground [a&]:hover:bg-warning/90",
         destructive:
           "bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90",
         outline:

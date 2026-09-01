@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Briefcase } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { formatClockTime } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
@@ -22,7 +22,7 @@ type TodayWorkDay = {
 export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   if (!workDay) {
     return (
-      <section className="border-border bg-card rounded-lg border border-l-2 border-l-accent p-5">
+      <section className="bg-secondary rounded-lg p-5 shadow-md">
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
         </div>
@@ -41,12 +41,9 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
   const totalTaskSeconds = calculateTotalTaskSeconds(workDay.tasks);
 
   return (
-    <section className="border-border bg-card rounded-lg border border-l-2 border-l-accent p-5">
+    <section className="bg-secondary rounded-lg p-5 shadow-md">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
-            <Briefcase className="size-4" />
-          </span>
           <h2 className="text-lg font-semibold tracking-tight">Today&apos;s Work</h2>
         </div>
         <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[workDay.status]}>

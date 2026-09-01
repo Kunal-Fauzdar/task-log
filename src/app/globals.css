@@ -14,11 +14,12 @@
     text     #111827 / #4B5563         — primary / secondary ink
 
   Six work-day / skill / task states have to stay distinguishable, so the greens are used as a
-  deliberate ramp — neutral grey-green -> sage -> bright green -> deepest green — and TWO earthy
-  off-green signals are reserved *only* for warning (amber) and destructive (brick). Those two
-  are a genuine usability need (a delete button must not read as "completed", an over-budget
-  warning must not read as "fine"); they're kept muted and earthy so they belong to an organic
-  palette rather than a stoplight.
+  deliberate ramp — faint sage -> sage -> bright green -> deepest green. design.md's palette is
+  green-only and defines no warning/error hue, so exactly ONE off-green signal is kept —
+  destructive (a muted brick) — and it covers both "invalid / error" and "needs attention"
+  (a delete button must not read as "completed", an over-budget warning must not read as
+  "fine"). No amber, no neutral grey fills — grey appears only as design.md's own
+  text-secondary ink (#4B5563).
 
   No dark theme. Single-user personal tool, no toggle — same "no unnecessary configurability"
   bias the rest of the app follows.
@@ -61,10 +62,7 @@
   /* Deepest green — holiday days, the strongest badge. design.md surface token. */
   --brand-strong: #061c15;
   --brand-strong-foreground: #dbe9d3;
-  /* Warning (duration over budget) — muted amber, earthy not neon. */
-  --warning: #b07d1a;
-  --warning-foreground: #fbf4e6;
-  /* Destructive (delete) — muted brick. */
+  /* Destructive (delete) + "needs attention" — muted brick, the one reserved off-green signal. */
   --destructive: #9a3324;
   --destructive-foreground: #fbeeeb;
 
@@ -100,8 +98,6 @@
   --color-success-foreground: var(--success-foreground);
   --color-brand-strong: var(--brand-strong);
   --color-brand-strong-foreground: var(--brand-strong-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
   --color-link: var(--link);
 
   --radius-sm: calc(var(--radius) - 4px);

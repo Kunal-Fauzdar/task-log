@@ -12,7 +12,7 @@ export function ReportDateFilterForm({ from, to }: { from: string; to: string })
     <form
       method="GET"
       action="/reports"
-      className="border-border bg-card flex flex-wrap items-end gap-3 rounded-lg border p-4 shadow-sm"
+      className="bg-accent/15 flex flex-wrap items-end gap-3 rounded-lg p-4 shadow-sm"
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="report-from">From</Label>
@@ -23,7 +23,7 @@ export function ReportDateFilterForm({ from, to }: { from: string; to: string })
         <Input id="report-to" name="to" type="date" defaultValue={to} required />
       </div>
       <Button type="submit">
-        <Filter /> Apply Filter
+        <Filter className="size-3.5"/> Apply Filter
       </Button>
     </form>
   );

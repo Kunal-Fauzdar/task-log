@@ -25,9 +25,9 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
   }
 
   return (
-    <section className="border-border bg-card flex flex-col gap-3.5 rounded-lg border p-4 shadow-sm">
+    <section className="bg-secondary flex flex-col gap-3.5 rounded-lg p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="bg-secondary text-link flex size-8 items-center justify-center rounded-lg">
+        <span className="bg-card text-link flex size-8 items-center justify-center rounded-lg">
           <CalendarCog className="size-4" />
         </span>
         <div>
@@ -45,7 +45,7 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
           {WEEKDAY_OPTIONS.map((day) => (
             <label
               key={day.value}
-              className="border-border has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 flex items-center gap-2 rounded-lg border p-2.5 text-sm transition-colors"
+              className="border-border has-data-[state=checked]:border-ring has-data-[state=checked]:bg-card flex items-center gap-2 rounded-lg border p-2.5 text-sm transition-colors"
             >
               <Checkbox
                 name="workingDays"
@@ -64,7 +64,7 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" disabled={isPending}>
-            <Save /> {isPending ? "Saving…" : "Save"}
+            <Save className="size-4" /> {isPending ? "Saving…" : "Save"}
           </Button>
           <span role="status" className="text-muted-foreground text-sm">
             {state.status === "error" && !state.fieldErrors && state.message}
