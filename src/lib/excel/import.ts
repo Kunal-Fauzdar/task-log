@@ -220,14 +220,15 @@ export async function parseWorkLogWorkbook(buffer: Buffer): Promise<ImportPrevie
     }
     currentGroup.errors.push(...issues);
 
-    if (taskIdRaw !== "") {
+    // A row is a task if it has a Task ID *or* a description — Task ID is optional.
+    if (taskIdRaw !== "" || taskListRaw !== "") {
       let durationSeconds = 0;
       try {
         durationSeconds = extractDurationSeconds(row.getCell(8));
       } catch (error) {
         currentGroup.errors.push(`Row ${rowNumber}: ${(error as Error).message}`);
       }
-      if (!isValidTaskId(taskIdRaw)) {
+      if (taskIdRaw !== "" && !isValidTaskId(taskIdRaw)) {
         currentGroup.errors.push(`Row ${rowNumber}: Invalid Task ID "${taskIdRaw}"`);
       }
       if (taskListRaw === "") {

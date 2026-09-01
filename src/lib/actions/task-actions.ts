@@ -20,7 +20,8 @@ import type { ActionState } from "@/lib/actions/types";
 
 function parseTaskForm(formData: FormData) {
   return taskInputSchema.safeParse({
-    taskId: formData.get("taskId"),
+    // `?? undefined` so an absent field is "optional", not a null that fails the union.
+    taskId: formData.get("taskId") ?? undefined,
     description: formData.get("description"),
     duration: formData.get("duration"),
     link: formData.get("link"),
@@ -51,7 +52,7 @@ export async function createTaskAction(
 
   const task = await createTask({
     workDayId,
-    taskId: parsed.data.taskId,
+    taskId: parsed.data.taskId ?? "",
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || undefined,
@@ -79,7 +80,7 @@ export async function updateTaskAction(
   }
 
   await updateTask(id, {
-    taskId: parsed.data.taskId,
+    taskId: parsed.data.taskId ?? "",
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || null,

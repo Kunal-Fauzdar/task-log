@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { getMonthRange, getWeekRange, sumNetWorkSeconds } from "@/lib/domain/workday";
+import {
+  elapsedWorkSeconds,
+  getMonthRange,
+  getRollingRange,
+  getWeekRange,
+  sumNetWorkSeconds,
+} from "@/lib/domain/workday";
 import { parseDateOnly } from "@/lib/domain/date";
 
 describe("getWeekRange", () => {
@@ -43,6 +49,55 @@ describe("getMonthRange", () => {
     const { from, to } = getMonthRange(parseDateOnly("2026-12-15"));
     expect(from.toISOString().slice(0, 10)).toBe("2026-12-01");
     expect(to.toISOString().slice(0, 10)).toBe("2026-12-31");
+  });
+});
+
+describe("getRollingRange", () => {
+  it("returns the last N days ending on (and including) the date", () => {
+    const { from, to } = getRollingRange(parseDateOnly("2026-09-01"), 7);
+    expect(from.toISOString().slice(0, 10)).toBe("2026-08-26");
+    expect(to.toISOString().slice(0, 10)).toBe("2026-09-01");
+  });
+
+  it("days=1 is just the date itself", () => {
+    const { from, to } = getRollingRange(parseDateOnly("2026-09-01"), 1);
+    expect(from.toISOString().slice(0, 10)).toBe("2026-09-01");
+    expect(to.toISOString().slice(0, 10)).toBe("2026-09-01");
+  });
+
+  it("spans a month boundary for a 30-day window early in a month", () => {
+    const { from } = getRollingRange(parseDateOnly("2026-09-01"), 30);
+    expect(from.toISOString().slice(0, 10)).toBe("2026-08-03");
+  });
+});
+
+describe("elapsedWorkSeconds", () => {
+  it("returns net work duration for a completed day", () => {
+    const checkIn = new Date(Date.UTC(2026, 8, 1, 9, 0, 0));
+    const checkOut = new Date(Date.UTC(2026, 8, 1, 17, 30, 0));
+    expect(elapsedWorkSeconds({ checkIn, checkOut, breakSeconds: 1800 }, new Date())).toBe(
+      8 * 3600 + 30 * 60 - 1800,
+    );
+  });
+
+  it("counts check-in → now (minus break) for an in-progress day", () => {
+    const checkIn = new Date(Date.UTC(2026, 8, 1, 9, 0, 0));
+    const now = new Date(Date.UTC(2026, 8, 1, 12, 0, 0));
+    expect(elapsedWorkSeconds({ checkIn, checkOut: null, breakSeconds: 600 }, now)).toBe(
+      3 * 3600 - 600,
+    );
+  });
+
+  it("is 0 when never checked in", () => {
+    expect(elapsedWorkSeconds({ checkIn: null, checkOut: null, breakSeconds: 0 }, new Date())).toBe(0);
+  });
+
+  it("never goes negative", () => {
+    const checkIn = new Date(Date.UTC(2026, 8, 1, 9, 0, 0));
+    const now = new Date(Date.UTC(2026, 8, 1, 9, 5, 0));
+    expect(
+      elapsedWorkSeconds({ checkIn, checkOut: null, breakSeconds: 99999 }, now),
+    ).toBe(0);
   });
 });
 

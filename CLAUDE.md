@@ -601,12 +601,23 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
 - **Dashboard's "Completed" task stat counts `timerStatus === "COMPLETED"` specifically**, not
   every logged task — a task can have a manually-entered duration and never be run through the
   timer, which is fine (§11: timer is optional), but means it stays outside this specific count.
-  "Tasks this month" is the total count regardless of timer status.
-- **Statistics scope: task-related stats ("Tasks this month", "Completed this month", "Avg.
-  task duration") are month-scoped**, matching the three duration stats next to them
-  ("This month's hours" etc.) — the spec listed them together without specifying scope
-  explicitly, and month-scoped is what stays useful without growing unbounded over the life of
-  the app.
+  the "Tasks · last 30 days" count is the total regardless of timer status.
+- **Dashboard stats use ROLLING windows, not calendar week/month** (changed on user feedback —
+  a calendar month reads as empty on the 1st even with a full week of work in the days just
+  before it). `getRollingRange(today, 7)` / `getRollingRange(today, 30)` in
+  `src/lib/domain/workday.ts` drive "Last 7 days" / "Last 30 days" and the "· last 30 days"
+  task stats. `getWeekRange`/`getMonthRange` still exist and are unchanged — Reports, the
+  calendar month page, and the export route still use calendar `getMonthRange`.
+- **The Dashboard's "hours" tiles tick live for an in-progress day.**
+  `src/components/dashboard/live-hours-tiles.tsx` (client) takes server-computed base sums
+  (which count today's not-yet-checked-out day as 0, via `sumNetWorkSeconds`) plus today's
+  `checkIn`/`breakSeconds`, and adds `elapsedWorkSeconds(day, getNaiveLocalNow())` to all three
+  windows, re-rendering once a second. `elapsedWorkSeconds` (new, `domain/workday.ts`) is
+  check-in → now − break; `now` MUST be naive-local so it's on the same clock basis as
+  `checkIn` (the "two clocks" rule, §3). An in-progress break isn't subtracted in real time
+  (would mix clocks) — the figure over-counts slightly until the break ends, fine for an
+  overview. This is why the tile shows real elapsed instead of `0:00:00` while you're checked
+  in.
 - **SkillMap search/category filter is client-side, not server-side.** `listSkills()` takes no
   filter arguments — it fetches everything once (a personal SkillMap is dozens of entries, not
   thousands) and `src/components/skill/skill-map.tsx` filters in the browser. Simpler and more
@@ -904,8 +915,11 @@ real `WorkDay` row from being visited.
 - `checkOut` must be after `checkIn` on the same day. Overnight shifts (checkout past
   midnight) are **out of scope for v1** — documented limitation, not silently mishandled.
 - A `WorkDay` marked `isHoliday = true` should not require any `Task` rows.
-- Task ID format: validated but intentionally permissive — pattern `^[A-Za-z]+-\d+$` (e.g.
-  `T-1039`), configurable via a single regex constant rather than hardcoded inline.
+- Task ID is **optional** (user request) — a task can be a free-form note with no ticket ID.
+  When present it must still match `^[A-Za-z]+-\d+$` (e.g. `T-1039`), a single regex constant.
+  Stored as `""` (not null) when omitted; `TaskTable` shows `—`, aria-labels fall back to
+  `"task"`. Excel import treats a row as a task if it has a Task ID *or* a description.
+  `Link` was already optional.
 - Skill `proficiencyPercentage` clamped to `[0, 100]` at the validation layer (Zod) before it
   ever reaches the database.
 

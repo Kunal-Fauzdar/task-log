@@ -17,7 +17,11 @@ const timeHHMM = z
   .transform((value) => (value ? value : null));
 
 const importTaskSchema = z.object({
-  taskId: z.string().trim().min(1, "Task ID is required").regex(TASK_ID_PATTERN, "Invalid Task ID"),
+  // Optional — empty is allowed; when present it must match the T-1039 shape.
+  taskId: z
+    .union([z.literal(""), z.string().trim().regex(TASK_ID_PATTERN, "Invalid Task ID")])
+    .optional()
+    .transform((value) => value ?? ""),
   description: z.string().trim().min(1, "Description is required").max(2000),
   durationSeconds: z.number().int().min(0),
   link: httpUrlOrEmpty.nullable().optional().transform((value) => value || null),

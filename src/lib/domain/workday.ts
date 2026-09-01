@@ -93,6 +93,31 @@ export function getMonthRange(date: Date): { from: Date; to: Date } {
   return { from, to };
 }
 
+// The last `days` calendar days ending on (and including) `date` — e.g. days=7 is a rolling
+// week, days=30 a rolling month. Used by the Dashboard instead of calendar week/month so its
+// totals don't look empty just because "today" is early in a calendar month.
+export function getRollingRange(date: Date, days: number): { from: Date; to: Date } {
+  const from = new Date(date);
+  from.setUTCDate(date.getUTCDate() - (days - 1));
+  return { from, to: new Date(date) };
+}
+
+// Seconds actually worked so far: for a completed day this equals net work duration; for an
+// in-progress day (checked in, not out) it counts check-in → `now`, minus accumulated break.
+// `now` MUST be a naive-local time (getNaiveLocalNow()) so it's on the same clock basis as
+// `checkIn` — see the "two clocks" note in CLAUDE.md §3. An in-progress break is not subtracted
+// in real time (would mix clocks); the figure over-counts slightly until the break ends, which
+// is acceptable for a dashboard overview.
+export function elapsedWorkSeconds(
+  workDay: { checkIn: Date | null; checkOut: Date | null; breakSeconds: number },
+  now: Date,
+): number {
+  if (!workDay.checkIn) return 0;
+  const end = workDay.checkOut ?? now;
+  const grossSeconds = Math.round((end.getTime() - workDay.checkIn.getTime()) / 1000);
+  return Math.max(0, grossSeconds - workDay.breakSeconds);
+}
+
 // Sums Net Work Duration across days, treating incomplete days (no netWorkSeconds yet) as 0
 // rather than excluding them — an in-progress or not-yet-started day contributes nothing to a
 // weekly/monthly total, but shouldn't error out the sum.

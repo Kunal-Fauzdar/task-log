@@ -10,11 +10,14 @@ const httpUrl = z
   .refine((url) => /^https?:\/\//i.test(url), "Link must start with http:// or https://");
 
 export const taskInputSchema = z.object({
+  // Optional — a task can be a free-form note with no ticket ID. When given, it must still look
+  // like "T-1039" (letters-dash-digits) so exports/imports stay consistent.
   taskId: z
-    .string()
-    .trim()
-    .min(1, "Task ID is required")
-    .regex(TASK_ID_PATTERN, "Task ID must look like T-1039"),
+    .union([
+      z.literal(""),
+      z.string().trim().regex(TASK_ID_PATTERN, "Task ID must look like T-1039"),
+    ])
+    .optional(),
   description: z.string().trim().min(1, "Description is required").max(2000),
   duration: durationString,
   link: z.union([httpUrl, z.literal("")]).optional(),

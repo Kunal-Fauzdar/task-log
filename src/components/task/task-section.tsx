@@ -166,7 +166,9 @@ export function TaskSection({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete task {taskPendingDelete?.taskId}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {taskPendingDelete?.taskId ? `task ${taskPendingDelete.taskId}` : "this task"}?
+            </AlertDialogTitle>
             <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

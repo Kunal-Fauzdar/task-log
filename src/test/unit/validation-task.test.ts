@@ -18,6 +18,18 @@ describe("taskInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts an omitted Task ID (optional)", () => {
+    const { taskId: _omit, ...withoutTaskId } = base;
+    void _omit;
+    const result = taskInputSchema.safeParse(withoutTaskId);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an empty Task ID (optional)", () => {
+    const result = taskInputSchema.safeParse({ ...base, taskId: "" });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects an empty description", () => {
     const result = taskInputSchema.safeParse({ ...base, description: "  " });
     expect(result.success).toBe(false);

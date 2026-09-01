@@ -48,9 +48,13 @@ export function TaskTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tasks.map((task, index) => (
+          {tasks.map((task, index) => {
+            const taskLabel = task.taskId || "task";
+            return (
             <TableRow key={task.id}>
-              <TableCell className="label-mono whitespace-nowrap">{task.taskId}</TableCell>
+              <TableCell className="label-mono whitespace-nowrap">
+                {task.taskId || <span className="text-muted-foreground">—</span>}
+              </TableCell>
               <TableCell className="max-w-md">
                 <p className="whitespace-pre-wrap">{task.description}</p>
                 {task.skills && task.skills.length > 0 && (
@@ -105,7 +109,7 @@ export function TaskTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Duplicate ${task.taskId}`}
+                    aria-label={`Duplicate ${taskLabel}`}
                     disabled={isPending}
                     onClick={() => onDuplicate(task)}
                   >
@@ -114,7 +118,7 @@ export function TaskTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${task.taskId}`}
+                    aria-label={`Edit ${taskLabel}`}
                     disabled={isPending}
                     onClick={() => onEdit(task)}
                   >
@@ -123,7 +127,7 @@ export function TaskTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Delete ${task.taskId}`}
+                    aria-label={`Delete ${taskLabel}`}
                     disabled={isPending}
                     onClick={() => onDelete(task)}
                   >
@@ -132,7 +136,8 @@ export function TaskTable({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </div>

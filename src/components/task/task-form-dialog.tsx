@@ -87,7 +87,7 @@ export function TaskFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="taskId">Task ID</Label>
+              <Label htmlFor="taskId">Task ID (optional)</Label>
               <Input
                 id="taskId"
                 name="taskId"
@@ -95,7 +95,6 @@ export function TaskFormDialog({
                 value={taskId}
                 onChange={(e) => setTaskId(e.target.value)}
                 aria-invalid={!!state.fieldErrors?.taskId}
-                required
                 className="font-mono"
               />
               {state.fieldErrors?.taskId && (

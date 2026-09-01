@@ -14,10 +14,10 @@ test("dashboard shows today's work, statistics, and recent work days", async ({ 
   await expect(page.getByRole("heading", { name: "Today's Work" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Statistics" })).toBeVisible();
   await expect(page.getByText("Today's hours")).toBeVisible();
-  await expect(page.getByText("This week's hours")).toBeVisible();
-  await expect(page.getByText("This month's hours")).toBeVisible();
-  await expect(page.getByText("Tasks this month")).toBeVisible();
-  await expect(page.getByText("Completed this month")).toBeVisible();
+  await expect(page.getByText("Last 7 days")).toBeVisible();
+  await expect(page.getByText("Last 30 days")).toBeVisible();
+  await expect(page.getByText("Tasks · last 30 days")).toBeVisible();
+  await expect(page.getByText("Completed · last 30 days")).toBeVisible();
   await expect(page.getByText("Avg. task duration")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Work Days" })).toBeVisible();
 });
