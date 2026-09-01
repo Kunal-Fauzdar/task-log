@@ -2,6 +2,7 @@
 
 import { useState, type ComponentProps } from "react";
 
+import { calculateTotalTaskSeconds } from "@/lib/domain/workday";
 import { TimeTrackingCard } from "@/components/workday/time-tracking-card";
 import { WorkDayHeader } from "@/components/workday/workday-header";
 import { TaskSection } from "@/components/task/task-section";
@@ -33,6 +34,8 @@ export function WorkDayPanels({ workDay, dateParam, netWorkSeconds, availableSki
     setDayType(workDay.dayType);
   }
 
+  const totalTaskSeconds = calculateTotalTaskSeconds(workDay.tasks);
+
   return (
     <>
       <WorkDayHeader
@@ -41,7 +44,11 @@ export function WorkDayPanels({ workDay, dateParam, netWorkSeconds, availableSki
         dayType={dayType}
         onDayTypeChange={setDayType}
       />
-      <TimeTrackingCard workDay={{ ...workDay, dayType }} dateParam={dateParam} />
+      <TimeTrackingCard
+        workDay={{ ...workDay, dayType }}
+        dateParam={dateParam}
+        totalTaskSeconds={totalTaskSeconds}
+      />
       <TaskSection
         workDayId={workDay.id}
         dateParam={dateParam}

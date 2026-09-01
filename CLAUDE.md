@@ -602,22 +602,60 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
   every logged task — a task can have a manually-entered duration and never be run through the
   timer, which is fine (§11: timer is optional), but means it stays outside this specific count.
   the "Tasks · last 30 days" count is the total regardless of timer status.
+- **`/dashboard` is `export const dynamic = "force-dynamic"` — always server-rendered, never a
+  build-time static snapshot** (user-reported bug: "Recent Work Days does not work properly in
+  the deployed website"; earlier "delete a task and the Dashboard doesn't reflect it; Reports
+  does"). Root cause: `/dashboard` had no dynamic input, so `next build` prerendered it
+  `○ (Static)` and Vercel served that build-time snapshot until something revalidated the exact
+  path. Reports was never affected only because it reads `searchParams` → `ƒ (Dynamic)`. Two
+  changes together fixed it: (1) the Dashboard now reads a `?month=` searchParam **and** carries
+  `force-dynamic`, so `next build` lists it `ƒ (Dynamic)` and every hit re-queries the DB; (2)
+  `revalidateWorkViews(date?)` in `src/lib/actions/revalidate-work-views.ts` revalidates
+  `/worklog/${date}` + `/dashboard` + `/calendar/[month]` (page) + `/reports` together, and every
+  mutating action in `task-actions.ts` / `workday-actions.ts` (incl. `deleteWorkDayAction`) calls
+  it instead of a bare `revalidatePath` (still useful for the client Router Cache and the
+  Calendar page). **Any new task/workday mutation must call `revalidateWorkViews`, not
+  `revalidatePath` directly.**
 - **Dashboard stats use ROLLING windows, not calendar week/month** (changed on user feedback —
   a calendar month reads as empty on the 1st even with a full week of work in the days just
-  before it). `getRollingRange(today, 7)` / `getRollingRange(today, 30)` in
-  `src/lib/domain/workday.ts` drive "Last 7 days" / "Last 30 days" and the "· last 30 days"
-  task stats. `getWeekRange`/`getMonthRange` still exist and are unchanged — Reports, the
-  calendar month page, and the export route still use calendar `getMonthRange`.
-- **The Dashboard's "hours" tiles tick live for an in-progress day.**
-  `src/components/dashboard/live-hours-tiles.tsx` (client) takes server-computed base sums
-  (which count today's not-yet-checked-out day as 0, via `sumNetWorkSeconds`) plus today's
-  `checkIn`/`breakSeconds`, and adds `elapsedWorkSeconds(day, getNaiveLocalNow())` to all three
-  windows, re-rendering once a second. `elapsedWorkSeconds` (new, `domain/workday.ts`) is
-  check-in → now − break; `now` MUST be naive-local so it's on the same clock basis as
-  `checkIn` (the "two clocks" rule, §3). An in-progress break isn't subtracted in real time
-  (would mix clocks) — the figure over-counts slightly until the break ends, fine for an
-  overview. This is why the tile shows real elapsed instead of `0:00:00` while you're checked
-  in.
+  before it). `getRollingRange(today, 30)` in `src/lib/domain/workday.ts` drives the "· last 30
+  days" *task* stats (Tasks / Completed). `getMonthRange` still backs Reports, the calendar
+  month page, and the export route. `getWeekRange` was **deleted** — nothing rendered a weekly
+  stat any more (user: "remove average and weekly tasks or hours from everywhere").
+- **The Dashboard's "Total hours" figure is per calendar month, chosen from a dropdown.**
+  `src/components/dashboard/month-hours-panel.tsx` (`MonthHoursPanel`, client) — a `<select>` of
+  the last 12 months inside **`next/form`'s `<Form action="/dashboard">`**, auto-submitting on
+  `change` (`event.currentTarget.form?.requestSubmit()`); the "Show" button is only a no-JS
+  fallback. **Two dead ends that were tried first:** a bare `<form method="GET">` only applies on
+  an explicit click, which users don't do (number looked stuck); and
+  `router.push("/dashboard?month=X")` does **not** re-run a server component when only the query
+  string changes on the same path (documented App Router behavior) — so the first pick worked
+  and every later month kept showing the first total ("same for every month"). `next/form` does a
+  real client navigation that re-renders the page's server component with the new searchParam
+  every time. The page parses `?month=` (`parseMonthOnly`, current month on missing/invalid),
+  sums `sumNetWorkSeconds` over that month's `listWorkDays(getMonthRange(...))`, and shows it
+  beside the picker (`data-testid="month-total-hours"`). The searchParam is also what makes
+  `/dashboard` dynamic — `force-dynamic` (note above) is belt-and-braces + self-documenting.
+- **The Dashboard's "Today's hours" tile ticks live for an in-progress day.**
+  `src/components/dashboard/live-today-hours.tsx` (`LiveTodayHours`, client) takes the
+  server-computed base sum (which counts today's not-yet-checked-out day as 0, via
+  `sumNetWorkSeconds`) plus today's `checkIn`/`breakSeconds`, and adds
+  `elapsedWorkSeconds(day, getNaiveLocalNow())`, re-rendering once a second. `elapsedWorkSeconds`
+  (`domain/workday.ts`) is check-in → now − break; `now` MUST be naive-local so it's on the same
+  clock basis as `checkIn` (the "two clocks" rule, §3). An in-progress break isn't subtracted in
+  real time (would mix clocks) — the figure over-counts slightly until the break ends, fine for
+  an overview. **Removed over successive user requests:** the "Last 7 days" / "Last 30 days"
+  *hours* tiles (`sumNetWorkSeconds` only counts days with both a check-in and a check-out, so
+  un-checked-out days silently dropped the total far below reality), the Dashboard's "Avg. task
+  duration" tile, and Reports' "Avg. daily hours" tile + `WorkSummary.averageDailyHoursSeconds`
+  (user: "remove average ... from everywhere"). `LiveTodayHours` renders exactly one tile now;
+  the Dashboard Statistics grid is Today's hours + Tasks·30d + Completed·30d.
+- **"Projected Check Out" = `checkIn + totalTaskSeconds + breakSeconds`** (user request: "add
+  end time according to task duration and break time"). `projectedCheckOutTime(workDay,
+  totalTaskSeconds)` in `domain/workday.ts` — a planning aid, never stored. Shown only while a
+  day is open (checkIn set, checkOut not) in both `TodayWorkCard` and `TimeTrackingCard` (which
+  gained a `totalTaskSeconds` prop, fed from `WorkDayPanels`). `checkIn` is naive-local-encoded,
+  so a plain ms offset keeps it on the same clock basis and it formats with `formatClockTime`.
 - **SkillMap search/category filter is client-side, not server-side.** `listSkills()` takes no
   filter arguments — it fetches everything once (a personal SkillMap is dozens of entries, not
   thousands) and `src/components/skill/skill-map.tsx` filters in the browser. Simpler and more

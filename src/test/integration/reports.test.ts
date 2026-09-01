@@ -77,7 +77,6 @@ describe("getTasksInRange + reports domain — real database data end to end", (
     const workSummary = buildWorkSummary(workDays, tasks);
     expect(workSummary.totalWorkingDays).toBe(2);
     expect(workSummary.totalHoursSeconds).toBe(12 * 3600); // 8h + 4h
-    expect(workSummary.averageDailyHoursSeconds).toBe(6 * 3600);
     expect(workSummary.totalTaskDurationSeconds).toBe(3600 + 1800 + 900);
 
     const byDate = groupTasksByDate(tasks);

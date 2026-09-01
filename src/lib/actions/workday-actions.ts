@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { workDayEditSchema, workDayTimesSchema } from "@/lib/validation/workday";
@@ -15,6 +14,7 @@ import {
   updateWorkDayTimes,
 } from "@/lib/data/workday";
 import { combineDateAndTime, parseDateOnly } from "@/lib/domain/date";
+import { revalidateWorkViews } from "@/lib/actions/revalidate-work-views";
 import type { ActionState } from "@/lib/actions/types";
 
 export async function updateWorkDayAction(
@@ -51,7 +51,7 @@ export async function updateWorkDayAction(
     dayNote: isDayOff ? parsed.data.dayNote || undefined : null,
   });
 
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
   return { status: "success" };
 }
 
@@ -60,8 +60,7 @@ export async function updateWorkDayAction(
 // revalidate in place. Lands on /dashboard, the app's home, same as logoutAction.
 export async function deleteWorkDayAction(id: string): Promise<void> {
   await deleteWorkDay(id);
-  revalidatePath("/calendar");
-  revalidatePath("/dashboard");
+  revalidateWorkViews();
   redirect("/dashboard");
 }
 
@@ -74,7 +73,7 @@ export async function startWorkAction(
   checkInAtIso: string,
 ): Promise<void> {
   await startWork(workDayId, new Date(checkInAtIso));
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function endWorkAction(
@@ -83,22 +82,22 @@ export async function endWorkAction(
   checkOutAtIso: string,
 ): Promise<void> {
   await endWork(workDayId, new Date(checkOutAtIso));
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function resetWorkDayTimesAction(workDayId: string, date: string): Promise<void> {
   await resetWorkDayTimes(workDayId);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function startBreakAction(workDayId: string, date: string): Promise<void> {
   await startBreak(workDayId);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function endBreakAction(workDayId: string, date: string): Promise<void> {
   await endBreak(workDayId);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function updateWorkDayTimesAction(
@@ -129,6 +128,6 @@ export async function updateWorkDayTimesAction(
     breakSeconds: parsed.data.breakDuration,
   });
 
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
   return { status: "success" };
 }

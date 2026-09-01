@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { taskInputSchema } from "@/lib/validation/task";
 import {
   completeTaskTimer,
@@ -16,6 +14,7 @@ import {
   startTaskTimer,
   updateTask,
 } from "@/lib/data/task";
+import { revalidateWorkViews } from "@/lib/actions/revalidate-work-views";
 import type { ActionState } from "@/lib/actions/types";
 
 function parseTaskForm(formData: FormData) {
@@ -59,7 +58,7 @@ export async function createTaskAction(
   });
   await setTaskSkills(task.id, parseSkillIds(formData));
 
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
   return { status: "success" };
 }
 
@@ -87,18 +86,18 @@ export async function updateTaskAction(
   });
   await setTaskSkills(id, parseSkillIds(formData));
 
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
   return { status: "success" };
 }
 
 export async function deleteTaskAction(id: string, date: string): Promise<void> {
   await deleteTask(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function duplicateTaskAction(id: string, date: string): Promise<void> {
   await duplicateTask(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function moveTaskAction(
@@ -117,25 +116,25 @@ export async function moveTaskAction(
   [ids[index], ids[swapWith]] = [ids[swapWith], ids[index]];
 
   await reorderTasks(ids);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function startTaskTimerAction(id: string, date: string): Promise<void> {
   await startTaskTimer(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function pauseTaskTimerAction(id: string, date: string): Promise<void> {
   await pauseTaskTimer(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function resumeTaskTimerAction(id: string, date: string): Promise<void> {
   await resumeTaskTimer(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }
 
 export async function completeTaskTimerAction(id: string, date: string): Promise<void> {
   await completeTaskTimer(id);
-  revalidatePath(`/worklog/${date}`);
+  revalidateWorkViews(date);
 }

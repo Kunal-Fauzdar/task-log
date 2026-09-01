@@ -18,7 +18,6 @@ export type ReportTask = {
 export type WorkSummary = {
   totalWorkingDays: number;
   totalHoursSeconds: number;
-  averageDailyHoursSeconds: number;
   totalTaskDurationSeconds: number;
 };
 
@@ -32,10 +31,8 @@ export function buildWorkSummary(
   const totalWorkingDays = workDays.filter((workDay) => workDay.checkIn !== null).length;
   const totalHoursSeconds = sumNetWorkSeconds(workDays);
   const totalTaskDurationSeconds = calculateTotalTaskSeconds(tasks);
-  const averageDailyHoursSeconds =
-    totalWorkingDays > 0 ? Math.round(totalHoursSeconds / totalWorkingDays) : 0;
 
-  return { totalWorkingDays, totalHoursSeconds, averageDailyHoursSeconds, totalTaskDurationSeconds };
+  return { totalWorkingDays, totalHoursSeconds, totalTaskDurationSeconds };
 }
 
 export type TasksByDate = { date: Date; taskCount: number; totalDurationSeconds: number };

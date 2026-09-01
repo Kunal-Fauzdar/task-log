@@ -31,7 +31,7 @@ describe("buildWorkSummary", () => {
     expect(summary.totalWorkingDays).toBe(1);
   });
 
-  it("computes total hours, average daily hours, and total task duration", () => {
+  it("computes total hours and total task duration", () => {
     const eightHourDay = (dateStr: string) => {
       const checkIn = parseDateOnly(dateStr);
       const checkOut = new Date(checkIn.getTime() + 8 * 3600 * 1000);
@@ -43,14 +43,13 @@ describe("buildWorkSummary", () => {
     const summary = buildWorkSummary(workDays, tasks);
 
     expect(summary.totalHoursSeconds).toBe(16 * 3600);
-    expect(summary.averageDailyHoursSeconds).toBe(8 * 3600);
     expect(summary.totalTaskDurationSeconds).toBe(5400);
   });
 
-  it("returns 0 average daily hours when there are no working days", () => {
+  it("returns zeroed totals when there are no working days", () => {
     const summary = buildWorkSummary([], []);
     expect(summary.totalWorkingDays).toBe(0);
-    expect(summary.averageDailyHoursSeconds).toBe(0);
+    expect(summary.totalHoursSeconds).toBe(0);
   });
 });
 

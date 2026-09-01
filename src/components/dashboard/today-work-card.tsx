@@ -8,6 +8,7 @@ import {
   WORK_DAY_STATUS_LABELS,
   calculateNetWorkSeconds,
   calculateTotalTaskSeconds,
+  projectedCheckOutTime,
 } from "@/lib/domain/workday";
 import { Badge } from "@/components/ui/badge";
 
@@ -39,6 +40,11 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
 
   const netWorkSeconds = calculateNetWorkSeconds(workDay);
   const totalTaskSeconds = calculateTotalTaskSeconds(workDay.tasks);
+  // Only useful while the day is still open — once checkOut is set, the real time is shown above.
+  const projectedCheckOut =
+    workDay.checkIn && !workDay.checkOut
+      ? projectedCheckOutTime(workDay, totalTaskSeconds)
+      : null;
 
   return (
     <section className="bg-secondary rounded-lg p-5 shadow-md">
@@ -71,6 +77,12 @@ export function TodayWorkCard({ workDay }: { workDay: TodayWorkDay | null }) {
             {netWorkSeconds !== null ? formatSecondsToDuration(Math.max(0, netWorkSeconds)) : "—"}
           </dd>
         </div>
+        {projectedCheckOut && (
+          <div>
+            <dt className="text-muted-foreground">Projected Check Out</dt>
+            <dd className="font-medium">{formatClockTime(projectedCheckOut)}</dd>
+          </div>
+        )}
         <div>
           <dt className="text-muted-foreground">Tasks</dt>
           <dd className="font-medium">{workDay.tasks.length}</dd>

@@ -79,7 +79,7 @@ export default async function ReportsPage({
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           Work Summary
         </h2>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           <StatTile
             label="Total working days"
             value={String(workSummary.totalWorkingDays)}
@@ -91,12 +91,6 @@ export default async function ReportsPage({
             value={formatSecondsToDuration(workSummary.totalHoursSeconds)}
             icon={ClipboardList}
             accent="primary"
-          />
-          <StatTile
-            label="Avg. daily hours"
-            value={formatSecondsToDuration(workSummary.averageDailyHoursSeconds)}
-            icon={BarChart3}
-            accent="success"
           />
           <StatTile
             label="Total task duration"

@@ -18,6 +18,7 @@ import {
   WORK_DAY_STATUS_BADGE_VARIANT,
   WORK_DAY_STATUS_LABELS,
   calculateNetWorkSeconds,
+  projectedCheckOutTime,
 } from "@/lib/domain/workday";
 import { useIsToday } from "@/hooks/use-is-today";
 import {
@@ -49,9 +50,11 @@ type WorkDaySummary = {
 export function TimeTrackingCard({
   workDay,
   dateParam,
+  totalTaskSeconds,
 }: {
   workDay: WorkDaySummary;
   dateParam: string;
+  totalTaskSeconds: number;
 }) {
   const isToday = useIsToday(dateParam);
   const [isPending, startTransition] = useTransition();
@@ -62,6 +65,12 @@ export function TimeTrackingCard({
 
   const netWorkSeconds = calculateNetWorkSeconds(workDay);
   const isOnBreak = workDay.breakStartedAt !== null;
+  // Estimated finish time = check-in + logged task time + break. Shown only while the day is
+  // open (checked in, not out); once checked out the real Check Out above is the answer.
+  const projectedCheckOut =
+    workDay.checkIn && !workDay.checkOut
+      ? projectedCheckOutTime(workDay, totalTaskSeconds)
+      : null;
 
   // Controlled, not defaultValue — see the comment in task-form-dialog.tsx: React 19 resets a
   // <form action> after every action call that resolves, including validation-error returns,
@@ -202,6 +211,12 @@ export function TimeTrackingCard({
             {netWorkSeconds !== null ? formatSecondsToDuration(Math.max(0, netWorkSeconds)) : "—"}
           </dd>
         </div>
+        {projectedCheckOut && (
+          <div>
+            <dt className="text-muted-foreground">Projected Check Out</dt>
+            <dd className="font-medium">{formatClockTime(projectedCheckOut)}</dd>
+          </div>
+        )}
       </dl>
 
       {!isDayOff && (

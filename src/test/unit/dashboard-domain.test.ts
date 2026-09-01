@@ -4,34 +4,10 @@ import {
   elapsedWorkSeconds,
   getMonthRange,
   getRollingRange,
-  getWeekRange,
+  projectedCheckOutTime,
   sumNetWorkSeconds,
 } from "@/lib/domain/workday";
-import { parseDateOnly } from "@/lib/domain/date";
-
-describe("getWeekRange", () => {
-  it("returns Sunday-Saturday containing the date", () => {
-    // 2026-08-24 is a Monday.
-    const { from, to } = getWeekRange(parseDateOnly("2026-08-24"));
-    expect(from.getUTCDay()).toBe(0);
-    expect(to.getUTCDay()).toBe(6);
-    expect(from.toISOString().slice(0, 10)).toBe("2026-08-23");
-    expect(to.toISOString().slice(0, 10)).toBe("2026-08-29");
-  });
-
-  it("handles a date that is itself a Sunday", () => {
-    const { from, to } = getWeekRange(parseDateOnly("2026-08-23"));
-    expect(from.toISOString().slice(0, 10)).toBe("2026-08-23");
-    expect(to.toISOString().slice(0, 10)).toBe("2026-08-29");
-  });
-
-  it("handles a week crossing a month boundary", () => {
-    // 2026-09-01 is a Tuesday; that week starts in August.
-    const { from, to } = getWeekRange(parseDateOnly("2026-09-01"));
-    expect(from.toISOString().slice(0, 10)).toBe("2026-08-30");
-    expect(to.toISOString().slice(0, 10)).toBe("2026-09-05");
-  });
-});
+import { formatClockTime, parseDateOnly } from "@/lib/domain/date";
 
 describe("getMonthRange", () => {
   it("returns the 1st to the last day of the month", () => {
@@ -116,5 +92,25 @@ describe("sumNetWorkSeconds", () => {
 
   it("returns 0 for an empty list", () => {
     expect(sumNetWorkSeconds([])).toBe(0);
+  });
+});
+
+describe("projectedCheckOutTime", () => {
+  it("adds task duration and break time onto check-in", () => {
+    // Check in 9:00 AM, 6h of tasks, 30m break -> 3:30 PM.
+    const checkIn = new Date(Date.UTC(2026, 7, 24, 9, 0, 0));
+    const result = projectedCheckOutTime({ checkIn, breakSeconds: 30 * 60 }, 6 * 3600);
+    expect(result).not.toBeNull();
+    expect(formatClockTime(result as Date)).toBe("3:30 PM");
+  });
+
+  it("returns null when there is no check-in", () => {
+    expect(projectedCheckOutTime({ checkIn: null, breakSeconds: 0 }, 3600)).toBeNull();
+  });
+
+  it("equals check-in itself when there are no tasks and no break", () => {
+    const checkIn = new Date(Date.UTC(2026, 7, 24, 10, 15, 0));
+    const result = projectedCheckOutTime({ checkIn, breakSeconds: 0 }, 0);
+    expect((result as Date).getTime()).toBe(checkIn.getTime());
   });
 });

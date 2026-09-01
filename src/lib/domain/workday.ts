@@ -25,6 +25,22 @@ export function calculateTotalTaskSeconds(tasks: { durationSeconds: number }[]):
   return tasks.reduce((sum, task) => sum + task.durationSeconds, 0);
 }
 
+// Projected Check Out = Check In + total task duration + break time. A planning aid shown while
+// a day is still open ("log this much task time, take this much break, and you'd finish at
+// ..."), never a stored value. `checkIn` is naive-local-encoded (its UTC getters hold the local
+// wall-clock time — see CLAUDE.md §3), and adding a plain millisecond offset preserves that, so
+// the result formats correctly with formatClockTime. Returns null when there's no check-in to
+// project from.
+export function projectedCheckOutTime(
+  workDay: { checkIn: Date | null; breakSeconds: number },
+  totalTaskSeconds: number,
+): Date | null {
+  if (!workDay.checkIn) return null;
+  return new Date(
+    workDay.checkIn.getTime() + (workDay.breakSeconds + Math.max(0, totalTaskSeconds)) * 1000,
+  );
+}
+
 // Warn-only (spec §12) — never used to modify task durations. `null` net duration (day not
 // complete yet) never counts as a discrepancy; there's nothing to compare against.
 export function hasDurationDiscrepancy(
@@ -74,16 +90,6 @@ export function deriveWorkDayStatus(workDay: {
   if (workDay.checkIn && workDay.checkOut) return WorkDayStatus.COMPLETED;
   if (workDay.checkIn) return WorkDayStatus.IN_PROGRESS;
   return WorkDayStatus.NOT_STARTED;
-}
-
-// Sunday-Saturday week containing `date`. Uses UTC getters/setters throughout — same
-// naive-local convention as everywhere else `WorkDay.date` is handled (see CLAUDE.md §3).
-export function getWeekRange(date: Date): { from: Date; to: Date } {
-  const from = new Date(date);
-  from.setUTCDate(date.getUTCDate() - date.getUTCDay());
-  const to = new Date(from);
-  to.setUTCDate(from.getUTCDate() + 6);
-  return { from, to };
 }
 
 // Calendar month containing `date` (1st to last day, inclusive).
