@@ -45,4 +45,22 @@ describe("exportQuerySchema", () => {
       false,
     );
   });
+
+  it("accepts an optional projectId on any variant", () => {
+    const result = exportQuerySchema.safeParse({
+      type: "month",
+      month: "2026-08",
+      projectId: "p-123",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.type === "month") {
+      expect(result.data.projectId).toBe("p-123");
+    }
+  });
+
+  it("treats an empty projectId (the 'All projects' option) as no filter", () => {
+    const result = exportQuerySchema.safeParse({ type: "day", date: "2026-08-24", projectId: "" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.projectId).toBeUndefined();
+  });
 });

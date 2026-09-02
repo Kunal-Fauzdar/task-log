@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { createWorkDay } from "@/lib/data/workday";
 import { createSkill } from "@/lib/data/skill";
+import { createProject } from "@/lib/data/project";
 import {
   createTask,
   deleteTask,
@@ -17,10 +18,12 @@ import {
 const TEST_DATE = new Date("2099-03-01");
 const TEST_SKILL_NAME_A = "__test__ TaskSkill A";
 const TEST_SKILL_NAME_B = "__test__ TaskSkill B";
+const TEST_PROJECT_NAME = "__test__ Task Project";
 
 afterEach(async () => {
   await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
   await prisma.skill.deleteMany({ where: { name: { in: [TEST_SKILL_NAME_A, TEST_SKILL_NAME_B] } } });
+  await prisma.project.deleteMany({ where: { name: TEST_PROJECT_NAME } });
 });
 
 async function seedWorkDay() {
@@ -76,6 +79,25 @@ describe("Task CRUD", () => {
     expect(copy.description).toBe("Original");
     expect(copy.durationSeconds).toBe(900);
     expect(copy.order).toBe(1);
+  });
+
+  it("stores a task's projectId and carries it through duplicate/update", async () => {
+    const workDay = await seedWorkDay();
+    const project = await createProject({ name: TEST_PROJECT_NAME });
+
+    const task = await createTask({
+      workDayId: workDay.id,
+      taskId: "T-1",
+      description: "Filed",
+      projectId: project.id,
+    });
+    expect(task.projectId).toBe(project.id);
+
+    const copy = await duplicateTask(task.id);
+    expect(copy?.projectId).toBe(project.id);
+
+    const cleared = await updateTask(task.id, { projectId: null });
+    expect(cleared?.projectId).toBeNull();
   });
 
   it("mutating a task that no longer exists returns null instead of throwing", async () => {

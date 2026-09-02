@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { findOrCreateWorkDayByDate } from "@/lib/data/workday";
+import { listProjects } from "@/lib/data/project";
 import { listSkills } from "@/lib/data/skill";
 import { parseDateOnly } from "@/lib/domain/date";
 import { calculateNetWorkSeconds } from "@/lib/domain/workday";
@@ -21,9 +22,10 @@ export default async function WorkLogDayPage({
   }
 
   const date = parseDateOnly(dateParam);
-  const [workDay, availableSkills] = await Promise.all([
+  const [workDay, availableSkills, availableProjects] = await Promise.all([
     findOrCreateWorkDayByDate(date),
     listSkills(),
+    listProjects(),
   ]);
   const netWorkSeconds = calculateNetWorkSeconds(workDay);
 
@@ -35,6 +37,7 @@ export default async function WorkLogDayPage({
         dateParam={dateParam}
         netWorkSeconds={netWorkSeconds}
         availableSkills={availableSkills}
+        availableProjects={availableProjects}
       />
     </div>
   );

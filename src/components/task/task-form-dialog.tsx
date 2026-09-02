@@ -25,24 +25,31 @@ export type TaskRecord = {
   description: string;
   durationSeconds: number;
   link: string | null;
+  projectId: string | null;
   timerStatus: string;
   timerStartedAt: Date | null;
   skills?: { skillId: string; skill: { name: string } }[];
 };
 
 export type AvailableSkill = { id: string; name: string };
+export type AvailableProject = { id: string; name: string };
 
 export function TaskFormDialog({
   workDayId,
   dateParam,
   task,
   availableSkills,
+  availableProjects,
+  defaultProjectId,
   onClose,
 }: {
   workDayId: string;
   dateParam: string;
   task?: TaskRecord;
   availableSkills: AvailableSkill[];
+  availableProjects: AvailableProject[];
+  // Pre-selected project when adding a task from inside a project's section on the day page.
+  defaultProjectId?: string | null;
   onClose: () => void;
 }) {
   const action = task ? updateTaskAction : createTaskAction;
@@ -57,6 +64,7 @@ export function TaskFormDialog({
   const [description, setDescription] = useState(task?.description ?? "");
   const [duration, setDuration] = useState(task ? formatSecondsToDuration(task.durationSeconds) : "");
   const [link, setLink] = useState(task?.link ?? "");
+  const [projectId, setProjectId] = useState(task?.projectId ?? defaultProjectId ?? "");
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(
     task?.skills?.map((s) => s.skillId) ?? [],
   );
@@ -117,6 +125,29 @@ export function TaskFormDialog({
                 <p className="text-destructive text-sm">{state.fieldErrors.duration[0]}</p>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="projectId">Project</Label>
+            <select
+              id="projectId"
+              name="projectId"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm outline-none focus-visible:ring-[3px]"
+            >
+              <option value="">— No project —</option>
+              {availableProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            {availableProjects.length === 0 && (
+              <p className="text-muted-foreground text-xs">
+                Add projects on the Projects page to file tasks under one.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">

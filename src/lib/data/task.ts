@@ -16,6 +16,7 @@ export async function createTask(data: {
   description: string;
   durationSeconds?: number;
   link?: string;
+  projectId?: string | null;
   order?: number;
 }) {
   const order = data.order ?? (await getNextTaskOrder(data.workDayId));
@@ -49,6 +50,7 @@ export function updateTask(
     description?: string;
     durationSeconds?: number;
     link?: string | null;
+    projectId?: string | null;
   },
 ) {
   return tolerateAlreadyDeleted(prisma.task.update({ where: { id }, data }));
@@ -70,6 +72,7 @@ export async function duplicateTask(id: string) {
       description: original.description,
       durationSeconds: original.durationSeconds,
       link: original.link,
+      projectId: original.projectId,
       order,
     },
   });

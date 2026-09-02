@@ -18,6 +18,7 @@ type Props = {
   dateParam: string;
   netWorkSeconds: number | null;
   availableSkills: ComponentProps<typeof TaskSection>["availableSkills"];
+  availableProjects: ComponentProps<typeof TaskSection>["availableProjects"];
 };
 
 // Owns the live `dayType` so choosing Holiday / Leave in the header immediately freezes the
@@ -25,7 +26,13 @@ type Props = {
 // Save still persists it; when the server sends back a fresh value we re-sync (compare against a
 // snapshot in render, same "adjust state during render" pattern used across this app, never an
 // effect).
-export function WorkDayPanels({ workDay, dateParam, netWorkSeconds, availableSkills }: Props) {
+export function WorkDayPanels({
+  workDay,
+  dateParam,
+  netWorkSeconds,
+  availableSkills,
+  availableProjects,
+}: Props) {
   const [serverDayType, setServerDayType] = useState<DayType>(workDay.dayType);
   const [dayType, setDayType] = useState<DayType>(workDay.dayType);
 
@@ -55,6 +62,7 @@ export function WorkDayPanels({ workDay, dateParam, netWorkSeconds, availableSki
         tasks={workDay.tasks}
         netWorkSeconds={netWorkSeconds}
         availableSkills={availableSkills}
+        availableProjects={availableProjects}
         dayType={dayType}
       />
     </>

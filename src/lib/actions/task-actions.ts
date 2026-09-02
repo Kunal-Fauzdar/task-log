@@ -24,6 +24,7 @@ function parseTaskForm(formData: FormData) {
     description: formData.get("description"),
     duration: formData.get("duration"),
     link: formData.get("link"),
+    projectId: formData.get("projectId") ?? undefined,
   });
 }
 
@@ -55,6 +56,7 @@ export async function createTaskAction(
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || undefined,
+    projectId: parsed.data.projectId || null,
   });
   await setTaskSkills(task.id, parseSkillIds(formData));
 
@@ -83,6 +85,7 @@ export async function updateTaskAction(
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || null,
+    projectId: parsed.data.projectId || null,
   });
   await setTaskSkills(id, parseSkillIds(formData));
 
@@ -107,13 +110,21 @@ export async function moveTaskAction(
   direction: "up" | "down",
 ): Promise<void> {
   const tasks = await getTasksByWorkDay(workDayId);
-  const index = tasks.findIndex((t) => t.id === taskId);
-  const swapWith = direction === "up" ? index - 1 : index + 1;
+  const target = tasks.find((t) => t.id === taskId);
+  if (!target) return;
 
-  if (index === -1 || swapWith < 0 || swapWith >= tasks.length) return;
+  // The day page renders tasks grouped by project, so up/down moves a task relative to its
+  // group-mates (same projectId), not across the whole day. Swap the two tasks' positions in
+  // the full ordered id list and reindex — everything else keeps its relative order.
+  const siblings = tasks.filter((t) => t.projectId === target.projectId);
+  const siblingIndex = siblings.findIndex((t) => t.id === taskId);
+  const swapSibling = siblings[direction === "up" ? siblingIndex - 1 : siblingIndex + 1];
+  if (!swapSibling) return;
 
   const ids = tasks.map((t) => t.id);
-  [ids[index], ids[swapWith]] = [ids[swapWith], ids[index]];
+  const a = ids.indexOf(taskId);
+  const b = ids.indexOf(swapSibling.id);
+  [ids[a], ids[b]] = [ids[b], ids[a]];
 
   await reorderTasks(ids);
   revalidateWorkViews(date);

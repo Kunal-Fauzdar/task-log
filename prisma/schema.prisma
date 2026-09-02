@@ -82,13 +82,31 @@ model Task {
   order           Int             @default(0)
   timerStatus     TaskTimerStatus @default(NONE)
   timerStartedAt  DateTime?
+  // Optional project grouping. onDelete: SetNull — removing a Project unassigns its tasks
+  // (they stay in their work days), never deletes them (user decision).
+  projectId       String?
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   skills          TaskSkill[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   @@index([workDayId])
   @@index([taskId])
+  @@index([projectId])
   @@map("tasks")
+}
+
+/// A project a task can be filed under. Global (spans every work day), not per-WorkDay. The
+/// Excel export can filter to a single project to produce a per-project timesheet; a task with
+/// no project just contributes its day's timings to the default (all-projects) export.
+model Project {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("projects")
 }
 
 /// `category` is always derived from `proficiencyPercentage` (see src/lib/domain/skill.ts) —

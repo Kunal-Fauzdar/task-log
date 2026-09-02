@@ -38,4 +38,16 @@ describe("getExportFilename", () => {
       getExportFilename("day", { from: parseDateOnly("2026-08-01"), to: parseDateOnly("2026-08-02") }),
     ).toThrow(RangeError);
   });
+
+  it("appends a slugified project name when the export is filtered to one project", () => {
+    expect(
+      getExportFilename("month", { month: parseMonthOnly("2026-08") }, "Website Redesign"),
+    ).toBe("WorkLog_August_2026_Website-Redesign.xlsx");
+  });
+
+  it("omits the suffix when no project name is given", () => {
+    expect(getExportFilename("day", { date: parseDateOnly("2026-08-03") }, undefined)).toBe(
+      "WorkLog_2026-08-03.xlsx",
+    );
+  });
 });

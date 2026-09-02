@@ -21,6 +21,10 @@ export const taskInputSchema = z.object({
   description: z.string().trim().min(1, "Description is required").max(2000),
   duration: durationString,
   link: z.union([httpUrl, z.literal("")]).optional(),
+  // A Project id, or "" for "no project". The value comes from a server-rendered <select> of
+  // real projects, so a bad id can only be a stale option — the FK (ON DELETE SET NULL) and the
+  // action's own null-coercion handle that; no need to check existence here.
+  projectId: z.string().trim().max(50).optional(),
 });
 
 export type TaskInput = z.infer<typeof taskInputSchema>;

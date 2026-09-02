@@ -496,6 +496,60 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
   `vitest run src/test/unit` (168 passed) all clean. Not re-checked in a live browser this
   session.
 
+**Projects / per-project timesheets (user request: "when a task is created the user adds a
+project too and you create a separate timesheet for that project with everything same just it
+have tasks of that project… also add feature of adding or removing projects. For no project
+task for a day just show timings like start, end and break and date and day").** Four design
+forks were settled with the user via `AskUserQuestion` before building — all took the
+recommended option:
+- **New `Project` model** (`id`, `name @unique`, `@@map("projects")`) — global, not
+  per-WorkDay (a project spans every day). `Task.projectId String?` with
+  `onDelete: SetNull` — **removing a project unassigns its tasks, never deletes them** (they
+  fall back to the "No project" group). Migration `20260902072740_add_projects`, applied to
+  Neon this session via `migrate dev` (the P1001 sandbox restriction wasn't in effect). New
+  `@@index([projectId])`.
+- **"Timesheet" = the Excel export, filtered.** `exportQuerySchema` gained an optional
+  `projectId` on all three variants (empty string → `undefined`, i.e. "All projects").
+  `/api/export` looks the project up (unknown id → 404), keeps every work day (so its
+  check-in/out/break still export) but filters each day's task rows to that project — a day
+  with no matching task then falls through `buildWorkLogWorkbook`'s existing
+  `tasks.length === 0` branch and renders as a **timings-only row** (Date/Day/Check In/Check
+  Out/Break, other cols blank). No column was added — the "All projects" file stays
+  byte-compatible with `parseWorkLogWorkbook` (import). `getExportFilename` takes an optional
+  `projectName` and appends a slug (`WorkLog_August_2026_Website-Redesign.xlsx`).
+- **`/worklog/[date]` groups tasks by project.** New pure helper
+  `groupTasksByProject(tasks, projects)` in `src/lib/domain/project.ts` — named-project groups
+  first (by name, case-insensitive), then a "No project" group, and **only groups that have
+  tasks that day** are returned. `TaskSection` renders one `<h3>` + its own "New task" button
+  (pre-selects that project via a new `defaultProjectId` prop on `TaskFormDialog`) + a
+  `TaskTable` per group, plus the existing single top-level "Add Task" button (dialog defaults
+  to "— No project —", user picks). The day-wide "Total task duration: …" line and the
+  discrepancy warning stay once at the bottom, unchanged (e2e depends on that exact string).
+  **`moveTaskAction` is now group-aware** — up/down swaps a task with its nearest same-`projectId`
+  sibling in the full ordered id list, then `reorderTasks` reindexes; a task never jumps groups
+  via the arrows.
+- **Task picker:** `TaskFormDialog` has a `name="projectId"` `<select>` (`— No project —` +
+  the projects, styled like `month-hours-panel.tsx`'s raw `<select>` — this app has no shadcn
+  Select primitive). `taskInputSchema.projectId` is `z.string().trim().max(50).optional()`; the
+  action coerces `"" → null`. `createTask`/`updateTask`/`duplicateTask` all carry `projectId`.
+- **`/projects` page** (`FolderKanban` nav item between Work Log and Calendar):
+  `ProjectManager` (client) — a `useActionState` add form (controlled input, snapshot-compare
+  render-time reset for the field, effect only for refocus) + a list with per-row Remove behind
+  the standard shadcn `AlertDialog`. `src/lib/data/project.ts` (`listProjects`,
+  `listProjectsWithTaskCounts`, `getProjectById`, `createProject`, `deleteProject` via
+  `tolerateAlreadyDeleted`), `src/lib/actions/project-actions.ts` (`createProjectAction`
+  catches P2002 → "name already exists"; both actions `revalidatePath` `/projects` +
+  `/worklog/[date]` page + `/export`). `/projects` and `/export` are both `○ (Static)` +
+  `revalidatePath`, same working pattern as `/skills`/`/settings` — not `force-dynamic`.
+- **Verification:** typecheck, lint, `npx next build` all clean; `vitest run` 274 passed (34
+  files); Playwright — new `e2e/projects.spec.ts` (add project → file a task under it → assert
+  it renders under the project `<h3>` and no "No project" group exists → per-project export
+  route returns a file whose `Content-Disposition` carries the slug → remove project → task
+  survives with `projectId: null`) plus the full suite green single-worker, except the
+  already-documented `time-tracking.spec.ts` "No work recorded" flake (leftover state on
+  today's real WorkDay from a prior test in the same run; passes standalone, not a regression —
+  this feature doesn't touch time tracking).
+
 ## 3. Key Architectural Decisions & Open Items
 
 - **Database: Neon Postgres, two connection strings, configured the Prisma 7 way.** Provisioned
@@ -880,8 +934,8 @@ cards, color that card").** A small, targeted follow-up to the eighth pass, not 
 
 ```
 WorkDay (1) ──< Task (many) >── TaskSkill >── Skill (many)
-                                                   │
-                                              SkillHistory (many)
+                    │                              │
+              Project (0..1)                  SkillHistory (many)
 
 Holiday  — standalone reference table, not FK-linked to WorkDay
 ```
@@ -901,7 +955,8 @@ force the matching status, otherwise checkIn/checkOut drive it. Weekends are NOT
 ### Task
 `id, workDayId (FK, cascade delete), taskId (string, e.g. "T-1039", validated format,
 not globally unique — same Task ID can recur across days), description, durationSeconds (int),
-link (nullable, validated URL), order (int, for manual reordering), timerStatus (enum:
+link (nullable, validated URL), projectId (FK, nullable, onDelete: SetNull — see Project),
+order (int, for manual reordering), timerStatus (enum:
 NONE | RUNNING | PAUSED | COMPLETED), timerStartedAt (nullable), createdAt, updatedAt`
 
 Task duration accumulates: `durationSeconds` holds all *completed* elapsed time; while
@@ -928,6 +983,17 @@ these are just seed defaults, never hardcoded UI text.
 
 ### TaskSkill (join table)
 `taskId, skillId` — composite PK. Optional association; a task may have zero skills.
+
+### Project
+`id, name (unique), createdAt, updatedAt`
+
+Global label a Task can be filed under (`Task.projectId`, nullable). Not per-WorkDay — a
+project spans every day. `onDelete: SetNull`: removing a project unassigns its tasks (they stay
+in their work days, shown under "No project"), never deletes them. The Excel export can filter
+to one project (`?projectId=`) to produce a per-project timesheet in the same layout; days with
+no task for that project export as a timings-only row. No dedicated "calendar state" or
+per-project WorkDay concept — grouping is derived at read time via `groupTasksByProject`
+(`src/lib/domain/project.ts`).
 
 ### Holiday (reference calendar, not per-user data)
 `id, date (unique, date-only), name, createdAt, updatedAt`
@@ -976,6 +1042,10 @@ Exact header row, in this order, always:
   (`cell.value = { text: "link", hyperlink: url }`), not the URL.
 - The sheet ends with a bold **TOTAL** row: `TOTAL` in the TaskID column, the summed task
   duration (`H:MM:SS`) in the Duration column. Header row also carries an autofilter.
+- **Optional `?projectId=` filter** (per-project timesheet): every work day still appears (its
+  timings export), but task rows are limited to that project — a day with none renders as a
+  timings-only row. Same columns, same layout; filename gains a `_<project-slug>` suffix.
+  Unknown id → 404.
 - Header row bold + filled + frozen. All data cells bordered. Task List column wraps text.
   Sensible column widths, not auto-fit-and-forget.
 - Every export is round-trip tested: write with ExcelJS, then **read the file back** with
@@ -998,6 +1068,7 @@ task-log/
 │   │   ├── worklog/[date]/page.tsx
 │   │   ├── calendar/page.tsx
 │   │   ├── skills/page.tsx
+│   │   ├── projects/page.tsx     # add / remove projects (per-project Excel timesheets)
 │   │   ├── reports/page.tsx
 │   │   ├── export/page.tsx
 │   │   ├── import/page.tsx
@@ -1010,7 +1081,7 @@ task-log/
 │   ├── components/
 │   │   ├── ui/                   # shadcn primitives (+ skeleton.tsx)
 │   │   ├── layout/                # header.tsx, page-header.tsx (shared page title/icon block)
-│   │   ├── auth/ workday/ task/ skill/ calendar/ dashboard/ settings/
+│   │   ├── auth/ workday/ task/ skill/ calendar/ dashboard/ settings/ project/
 │   ├── lib/
 │   │   ├── db.ts                 # Prisma client singleton
 │   │   ├── data/                 # repository layer (Prisma calls only)

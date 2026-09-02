@@ -7,6 +7,7 @@ import {
   CalendarDays,
   FileDown,
   FileUp,
+  FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/worklog", label: "Work Log", icon: NotebookPen },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/skills", label: "Skills", icon: GraduationCap },
   { href: "/reports", label: "Reports", icon: ChartColumn },

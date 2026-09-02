@@ -59,4 +59,18 @@ describe("taskInputSchema", () => {
     const result = taskInputSchema.safeParse({ ...base, link: "ftp://example.com/file" });
     expect(result.success).toBe(false);
   });
+
+  it("accepts an omitted projectId (optional)", () => {
+    expect(taskInputSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("accepts an empty projectId (the '— No project —' option)", () => {
+    expect(taskInputSchema.safeParse({ ...base, projectId: "" }).success).toBe(true);
+  });
+
+  it("accepts a projectId string", () => {
+    const result = taskInputSchema.safeParse({ ...base, projectId: "clv1abc2300000xyz" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.projectId).toBe("clv1abc2300000xyz");
+  });
 });

@@ -6,6 +6,7 @@ import { AlertTriangle, ListChecks, Plus } from "lucide-react";
 import { deleteTaskAction, duplicateTaskAction, moveTaskAction } from "@/lib/actions/task-actions";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { getEffectiveTaskSeconds } from "@/lib/domain/task";
+import { groupTasksByProject } from "@/lib/domain/project";
 import { hasDurationDiscrepancy } from "@/lib/domain/workday";
 import {
   AlertDialog,
@@ -20,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   TaskFormDialog,
+  type AvailableProject,
   type AvailableSkill,
   type TaskRecord,
 } from "@/components/task/task-form-dialog";
@@ -31,6 +33,7 @@ export function TaskSection({
   tasks,
   netWorkSeconds,
   availableSkills,
+  availableProjects,
   dayType,
 }: {
   workDayId: string;
@@ -38,6 +41,7 @@ export function TaskSection({
   tasks: TaskRecord[];
   netWorkSeconds: number | null;
   availableSkills: AvailableSkill[];
+  availableProjects: AvailableProject[];
   dayType: "WORKING" | "HOLIDAY" | "LEAVE";
 }) {
   // On a holiday / leave day there's no work to log — freeze task creation and the per-row
@@ -46,7 +50,8 @@ export function TaskSection({
   const isDayOff = dayType !== "WORKING";
   const dayOffLabel = dayType === "HOLIDAY" ? "holiday" : "leave";
   const [dialogTask, setDialogTask] = useState<TaskRecord | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  // null = not creating; { projectId } = creating, with that project pre-selected in the dialog.
+  const [createIn, setCreateIn] = useState<{ projectId: string | null } | null>(null);
   const [taskPendingDelete, setTaskPendingDelete] = useState<TaskRecord | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -67,6 +72,12 @@ export function TaskSection({
   );
 
   const isOverBudget = hasDurationDiscrepancy(netWorkSeconds, totalSeconds);
+
+  // Named-project groups first (by name), then "No project" — only groups that have tasks today.
+  const groups = useMemo(
+    () => groupTasksByProject(tasks, availableProjects),
+    [tasks, availableProjects],
+  );
 
   function confirmDelete() {
     const task = taskPendingDelete;
@@ -96,7 +107,7 @@ export function TaskSection({
           <ListChecks className="text-link size-5" />
           Tasks
         </h2>
-        <Button size="sm" onClick={() => setIsCreating(true)} disabled={isDayOff}>
+        <Button size="sm" onClick={() => setCreateIn({ projectId: null })} disabled={isDayOff}>
           <Plus /> Add Task
         </Button>
       </div>
@@ -115,15 +126,44 @@ export function TaskSection({
               day type back to Working to edit them.
             </p>
           )}
-          <TaskTable
-            tasks={tasks}
-            dateParam={dateParam}
-            isPending={isPending || isDayOff}
-            onEdit={setDialogTask}
-            onDelete={setTaskPendingDelete}
-            onDuplicate={handleDuplicate}
-            onMove={handleMove}
-          />
+
+          {groups.map((group) => {
+            const groupSeconds = group.tasks.reduce(
+              (sum, task) => sum + getEffectiveTaskSeconds(task, now),
+              0,
+            );
+            return (
+              <div key={group.projectId ?? "__none__"} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="flex items-baseline gap-2 text-sm font-semibold tracking-tight">
+                    {group.name}
+                    <span className="text-muted-foreground text-xs font-normal">
+                      {group.tasks.length} {group.tasks.length === 1 ? "task" : "tasks"} ·{" "}
+                      {formatSecondsToDuration(groupSeconds)}
+                    </span>
+                  </h3>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isDayOff}
+                    onClick={() => setCreateIn({ projectId: group.projectId })}
+                  >
+                    <Plus className="size-3.5" /> New task
+                  </Button>
+                </div>
+                <TaskTable
+                  tasks={group.tasks}
+                  dateParam={dateParam}
+                  isPending={isPending || isDayOff}
+                  onEdit={setDialogTask}
+                  onDelete={setTaskPendingDelete}
+                  onDuplicate={handleDuplicate}
+                  onMove={handleMove}
+                />
+              </div>
+            );
+          })}
+
           <p className="text-muted-foreground text-sm">
             Total task duration: {formatSecondsToDuration(totalSeconds)}
           </p>
@@ -141,12 +181,14 @@ export function TaskSection({
         </>
       )}
 
-      {isCreating && (
+      {createIn && (
         <TaskFormDialog
           workDayId={workDayId}
           dateParam={dateParam}
           availableSkills={availableSkills}
-          onClose={() => setIsCreating(false)}
+          availableProjects={availableProjects}
+          defaultProjectId={createIn.projectId}
+          onClose={() => setCreateIn(null)}
         />
       )}
 
@@ -156,6 +198,7 @@ export function TaskSection({
           dateParam={dateParam}
           task={dialogTask}
           availableSkills={availableSkills}
+          availableProjects={availableProjects}
           onClose={() => setDialogTask(null)}
         />
       )}
