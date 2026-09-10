@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { listWorkDays } from "@/lib/data/workday";
-import { getProjectById } from "@/lib/data/project";
+import { getProjectById, listProjects } from "@/lib/data/project";
 import { getWorkingDays } from "@/lib/data/settings";
 import { parseDateOnly, parseMonthOnly } from "@/lib/domain/date";
 import { getExportFilename } from "@/lib/domain/export";
@@ -67,18 +67,33 @@ export async function GET(request: NextRequest) {
     filename = getExportFilename("range", { from, to }, projectName);
   }
 
-  const [workDays, workingDays] = await Promise.all([
+  const [workDays, workingDays, projects] = await Promise.all([
     listWorkDays(user.id, { from, to }),
     getWorkingDays(user.id),
+    // Only needed for the all-projects export, to tag each task row with its project name.
+    project ? Promise.resolve([]) : listProjects(user.id),
   ]);
-  // A project filter keeps every work day (so its timings still export) but limits each day's
-  // task rows to that project — a day with no matching task then renders as a timings-only row.
-  const scopedWorkDays = project
-    ? workDays.map((workDay) => ({
-        ...workDay,
-        tasks: workDay.tasks.filter((task) => task.projectId === project.id),
-      }))
-    : workDays;
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+
+  let scopedWorkDays;
+  if (project) {
+    // A project filter keeps every work day (so its timings still export) but limits each day's
+    // task rows to that project — a day with no matching task renders as a timings-only row. No
+    // per-row project tag here: the whole file is that one project (and its filename says so).
+    scopedWorkDays = workDays.map((workDay) => ({
+      ...workDay,
+      tasks: workDay.tasks.filter((task) => task.projectId === project.id),
+    }));
+  } else {
+    // All-projects export: append " (Project Name)" to each task's Task List cell.
+    scopedWorkDays = workDays.map((workDay) => ({
+      ...workDay,
+      tasks: workDay.tasks.map((task) => ({
+        ...task,
+        projectName: task.projectId ? (projectNameById.get(task.projectId) ?? null) : null,
+      })),
+    }));
+  }
   const filledWorkDays = fillMissingExportDays(scopedWorkDays, { from, to }, getServerToday());
   const workbook = await buildWorkLogWorkbook(filledWorkDays, workingDays);
   const buffer = await workbook.xlsx.writeBuffer();

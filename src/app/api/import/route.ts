@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db";
+import { listProjects } from "@/lib/data/project";
 import { formatDateOnly, parseDateOnly } from "@/lib/domain/date";
+import { stripProjectSuffix } from "@/lib/domain/project";
 import { parseWorkLogWorkbook } from "@/lib/excel/import";
 
 // Route Handler, not a Server Action (CLAUDE.md §3) — this reads a binary file upload, which a
@@ -44,15 +46,25 @@ export async function POST(request: NextRequest) {
   }
 
   const dates = preview.groups.map((group) => parseDateOnly(group.date));
-  const existing = await prisma.workDay.findMany({
-    where: { userId: user.id, date: { in: dates } },
-    select: { date: true },
-  });
+  const [existing, projects] = await Promise.all([
+    prisma.workDay.findMany({
+      where: { userId: user.id, date: { in: dates } },
+      select: { date: true },
+    }),
+    listProjects(user.id),
+  ]);
   const existingDates = new Set(existing.map((workDay) => formatDateOnly(workDay.date)));
+  const projectNames = projects.map((p) => p.name);
 
+  // Undo the export's " (Project Name)" Task List suffix so importing an all-projects export
+  // back doesn't leave the tag baked into the description.
   const groups = preview.groups.map((group) => ({
     ...group,
     isDuplicate: existingDates.has(group.date),
+    tasks: group.tasks.map((task) => ({
+      ...task,
+      description: stripProjectSuffix(task.description, projectNames),
+    })),
   }));
 
   return NextResponse.json({ groups, rowErrors: preview.rowErrors });

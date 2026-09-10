@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { NO_PROJECT_LABEL, groupTasksByProject } from "@/lib/domain/project";
+import { NO_PROJECT_LABEL, groupTasksByProject, stripProjectSuffix } from "@/lib/domain/project";
 
 const projects = [
   { id: "p-web", name: "Website" },
@@ -48,5 +48,43 @@ describe("groupTasksByProject", () => {
 
   it("returns nothing for an empty task list", () => {
     expect(groupTasksByProject([], projects)).toEqual([]);
+  });
+});
+
+describe("stripProjectSuffix", () => {
+  const names = ["Website Redesign", "Mobile App"];
+
+  it("strips a trailing parenthetical that matches a known project name", () => {
+    expect(stripProjectSuffix("Wired up checkout (Website Redesign)", names)).toBe(
+      "Wired up checkout",
+    );
+  });
+
+  it("matches project names case-insensitively and tolerates surrounding space", () => {
+    expect(stripProjectSuffix("Fix nav  (website redesign)  ", names)).toBe("Fix nav");
+  });
+
+  it("leaves a trailing parenthetical that is NOT a known project alone", () => {
+    expect(stripProjectSuffix("Fixed login (regression from PR 42)", names)).toBe(
+      "Fixed login (regression from PR 42)",
+    );
+  });
+
+  it("only touches a trailing parenthetical, not one mid-description", () => {
+    expect(stripProjectSuffix("Refactor (big) chunk of the parser", names)).toBe(
+      "Refactor (big) chunk of the parser",
+    );
+  });
+
+  it("handles a multi-line description ending in the project tag", () => {
+    expect(stripProjectSuffix("line one\nline two (Mobile App)", names)).toBe(
+      "line one\nline two",
+    );
+  });
+
+  it("is a no-op when there are no known project names", () => {
+    expect(stripProjectSuffix("Anything (Website Redesign)", [])).toBe(
+      "Anything (Website Redesign)",
+    );
   });
 });

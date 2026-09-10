@@ -45,6 +45,11 @@ export type ExportTask = {
   description: string;
   durationSeconds: number;
   link: string | null;
+  // When set, appended to the Task List cell as " (Project Name)". The route only sets this on
+  // the all-projects export — a single-project export names the project in its filename and
+  // every row would be that same project. Import strips a trailing " (known project)" back off
+  // so a round trip stays clean (see stripProjectSuffix in src/lib/domain/project.ts).
+  projectName?: string | null;
 };
 
 export type ExportWorkDay = {
@@ -156,10 +161,13 @@ export async function buildWorkLogWorkbook(
 
     for (const task of workDay.tasks) {
       totalTaskSeconds += task.durationSeconds;
+      const taskListText = task.projectName
+        ? `${task.description} (${task.projectName})`
+        : task.description;
       const row = sheet.addRow([
         ...dateCells,
         task.taskId,
-        task.description,
+        taskListText,
         formatSecondsToDuration(task.durationSeconds),
         task.link ? { text: LINK_CELL_TEXT, hyperlink: task.link } : "",
       ]);

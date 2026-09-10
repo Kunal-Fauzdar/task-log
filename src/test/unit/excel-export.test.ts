@@ -143,6 +143,30 @@ describe("buildWorkLogWorkbook — formatting", () => {
       expect(sheet.getRow(2).getCell(col).border?.top?.style).toBe("thin");
     }
   });
+
+  it("appends the project name in parentheses to the Task List cell when set", async () => {
+    const workDay = makeWorkDay({
+      tasks: [
+        {
+          taskId: "T-1",
+          description: "Wired up the checkout flow",
+          durationSeconds: 3600,
+          link: null,
+          projectName: "Website Redesign",
+        },
+        {
+          taskId: "T-2",
+          description: "No project here",
+          durationSeconds: 1800,
+          link: null,
+          projectName: null,
+        },
+      ],
+    });
+    const { sheet } = await buildAndReload([workDay]);
+    expect(sheet.getRow(2).getCell(7).value).toBe("Wired up the checkout flow (Website Redesign)");
+    expect(sheet.getRow(3).getCell(7).value).toBe("No project here");
+  });
 });
 
 describe("buildWorkLogWorkbook — a totals row", () => {

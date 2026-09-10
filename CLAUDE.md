@@ -1067,6 +1067,14 @@ Exact header row, in this order, always:
   `(dayNote)` when set). A weekend day that *does* have work logged renders as a normal row.
 - Links are real Excel hyperlinks; the **display text is the literal word `link`**
   (`cell.value = { text: "link", hyperlink: url }`), not the URL.
+- On the **all-projects** export, a task filed under a project has its project name appended to
+  the Task List cell as `" (Project Name)"` (user request). Not done on a `?projectId=`-filtered
+  export (every row is that one project, and the filename says so). Import undoes it —
+  `stripProjectSuffix` (`src/lib/domain/project.ts`) removes a trailing ` (X)` from a parsed
+  description **only** when `X` exactly matches one of the importing user's project names, so a
+  description that legitimately ends in `(a note)` survives a round trip. The strip runs in
+  `/api/import`'s route (it has the user + project list); `parseWorkLogWorkbook` itself stays
+  project-unaware. It does **not** restore `projectId` on import — that's still lossy.
 - The sheet ends with a bold **TOTAL** row: `TOTAL` in the TaskID column, the summed task
   duration (`H:MM:SS`) in the Duration column. Header row also carries an autofilter.
 - **Optional `?projectId=` filter** (per-project timesheet): every work day still appears (its

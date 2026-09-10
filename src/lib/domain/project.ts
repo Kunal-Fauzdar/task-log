@@ -56,3 +56,17 @@ export function groupTasksByProject<T extends { projectId: string | null }>(
 
   return groups;
 }
+
+// Inverse of the export's " (Project Name)" suffix on the Task List cell. Only strips a trailing
+// parenthetical when its contents exactly match one of the caller's known project names, so a
+// description that legitimately ends in "(some note)" is left untouched. Used on import so a
+// round trip through an all-projects export doesn't bake the project tag into the description.
+export function stripProjectSuffix(description: string, projectNames: Iterable<string>): string {
+  const known = new Set([...projectNames].map((name) => name.trim().toLowerCase()));
+  if (known.size === 0) return description;
+
+  const match = /^([\s\S]*\S)\s*\(([^()\n]+)\)\s*$/.exec(description);
+  if (!match) return description;
+
+  return known.has(match[2].trim().toLowerCase()) ? match[1].trimEnd() : description;
+}
