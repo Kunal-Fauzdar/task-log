@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Playfair_Display, JetBrains_Mono } from "next/font/g
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { AppShell } from "@/components/layout/app-shell";
+import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css";
 
