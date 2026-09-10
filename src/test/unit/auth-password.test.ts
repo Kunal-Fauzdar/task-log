@@ -1,42 +1,29 @@
-import { hash } from "bcryptjs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
-// AUTH_PASSWORD_HASH is base64-encoded, not the raw "$2b$..." string — see the comment in
-// src/lib/auth/password.ts for why (Next.js's .env loader mangles "$" characters).
-async function encodedHashFor(password: string): Promise<string> {
-  const bcryptHash = await hash(password, 4);
-  return Buffer.from(bcryptHash, "utf8").toString("base64");
-}
-
-describe("verifyPassword", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("accepts the correct password against its own hash", async () => {
-    vi.stubEnv("AUTH_PASSWORD_HASH", await encodedHashFor("correct-horse-battery-staple"));
-    expect(await verifyPassword("correct-horse-battery-staple")).toBe(true);
+describe("hashPassword / verifyPassword", () => {
+  it("verifies a password against its own hash", async () => {
+    const hash = await hashPassword("correct-horse-battery-staple");
+    expect(hash.startsWith("$2")).toBe(true);
+    expect(await verifyPassword("correct-horse-battery-staple", hash)).toBe(true);
   });
 
   it("rejects an incorrect password", async () => {
-    vi.stubEnv("AUTH_PASSWORD_HASH", await encodedHashFor("correct-horse-battery-staple"));
-    expect(await verifyPassword("wrong-password")).toBe(false);
+    const hash = await hashPassword("correct-horse-battery-staple");
+    expect(await verifyPassword("wrong-password", hash)).toBe(false);
   });
 
-  it("fails closed when AUTH_PASSWORD_HASH is unset", async () => {
-    const original = process.env.AUTH_PASSWORD_HASH;
-    delete process.env.AUTH_PASSWORD_HASH;
-    try {
-      expect(await verifyPassword("anything")).toBe(false);
-    } finally {
-      if (original !== undefined) process.env.AUTH_PASSWORD_HASH = original;
-    }
+  it("produces a different hash each call (salted) but both verify", async () => {
+    const a = await hashPassword("same-input");
+    const b = await hashPassword("same-input");
+    expect(a).not.toBe(b);
+    expect(await verifyPassword("same-input", a)).toBe(true);
+    expect(await verifyPassword("same-input", b)).toBe(true);
   });
 
-  it("fails closed when AUTH_PASSWORD_HASH is not validly-encoded base64 of a bcrypt hash", async () => {
-    vi.stubEnv("AUTH_PASSWORD_HASH", Buffer.from("not-a-bcrypt-hash", "utf8").toString("base64"));
-    expect(await verifyPassword("anything")).toBe(false);
+  it("fails closed against a non-bcrypt hash (e.g. the __RESET_REQUIRED__ sentinel)", async () => {
+    expect(await verifyPassword("anything", "__RESET_REQUIRED__")).toBe(false);
+    expect(await verifyPassword("anything", "")).toBe(false);
   });
 });

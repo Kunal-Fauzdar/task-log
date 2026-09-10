@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { listWorkDays } from "@/lib/data/workday";
 import { addMonths, formatDateOnly, formatMonthLabel, parseMonthOnly } from "@/lib/domain/date";
 import { getMonthRange } from "@/lib/domain/workday";
@@ -27,11 +28,12 @@ export default async function CalendarMonthPage({
     notFound();
   }
 
+  const user = await requireUser();
   const monthStart = parseMonthOnly(monthParam);
   const { to: monthEnd } = getMonthRange(monthStart);
   const daysInMonth = monthEnd.getUTCDate();
 
-  const workDays = await listWorkDays({ from: monthStart, to: monthEnd });
+  const workDays = await listWorkDays(user.id, { from: monthStart, to: monthEnd });
   const workDaysByDate = new Map(workDays.map((workDay) => [formatDateOnly(workDay.date), workDay]));
 
   const prevMonth = addMonths(monthStart, -1);

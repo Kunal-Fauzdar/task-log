@@ -6,17 +6,18 @@ import { test, expect } from "@playwright/test";
 import { prisma } from "../src/lib/db";
 import { createWorkDay } from "../src/lib/data/workday";
 import { createTask } from "../src/lib/data/task";
+import { e2eUserId } from "./helpers";
 
 const TEST_DATE = new Date("2099-11-05");
 
 test.afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
+  await prisma.workDay.deleteMany({ where: { userId: await e2eUserId(), date: TEST_DATE } });
 });
 
 test("custom range export downloads a real xlsx file with the logged task in it", async ({
   page,
 }, testInfo) => {
-  const workDay = await createWorkDay({ date: TEST_DATE });
+  const workDay = await createWorkDay({ userId: await e2eUserId(), date: TEST_DATE });
   await createTask({
     workDayId: workDay.id,
     taskId: "T-6001",

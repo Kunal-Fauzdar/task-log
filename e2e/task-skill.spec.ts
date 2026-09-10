@@ -2,12 +2,13 @@ import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
 import { parseDateOnly } from "../src/lib/domain/date";
+import { e2eUserId } from "./helpers";
 
 const TEST_DATE_PARAM = "2099-09-01";
 const TEST_DATE = parseDateOnly(TEST_DATE_PARAM);
 
 test.afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
+  await prisma.workDay.deleteMany({ where: { userId: await e2eUserId(), date: TEST_DATE } });
 });
 
 test("associating a skill with a task shows it as a badge and persists on edit", async ({ page }) => {

@@ -1,5 +1,6 @@
 import { LayoutDashboard } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { getRecentWorkDays, getWorkDayByDate, listWorkDays } from "@/lib/data/workday";
 import {
   formatDateOnly,
@@ -48,6 +49,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
+  const user = await requireUser();
   const { month: monthParam } = await searchParams;
   const today = getServerToday();
 
@@ -69,10 +71,10 @@ export default async function DashboardPage({
   const last30 = getRollingRange(today, 30);
 
   const [todayWorkDay, month30WorkDays, selectedMonthWorkDays, recentWorkDays] = await Promise.all([
-    getWorkDayByDate(today),
-    listWorkDays(last30),
-    listWorkDays(monthRange),
-    getRecentWorkDays(10),
+    getWorkDayByDate(user.id, today),
+    listWorkDays(user.id, last30),
+    listWorkDays(user.id, monthRange),
+    getRecentWorkDays(user.id, 10),
   ]);
 
   const todaysHours = todayWorkDay ? sumNetWorkSeconds([todayWorkDay]) : 0;

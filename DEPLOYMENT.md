@@ -153,24 +153,26 @@ against production should be a conscious choice, not a side effect of deploying.
 3. If Preview deployments should also hit a database, add the same two variables scoped to
    **Preview** (can point at the dev database, or a third dedicated preview database).
 4. These are configured in the Vercel dashboard only, never committed to git.
-5. **Auth (Phase 10)** — also add `AUTH_PASSWORD_HASH` and `SESSION_SECRET`. Generate both with:
+5. **Auth (Phase 12 — multi-user)** — the only auth env var now is **`SESSION_SECRET`**. There
+   is no more `AUTH_PASSWORD_HASH`: passwords live in the `User` table (bcrypt hash per account),
+   set when a user registers. Generate the secret with:
    ```bash
-   npm run auth:hash-password -- 'your-chosen-password'
+   npm run auth:gen-secret
    ```
-   This prints two lines ready to paste as-is into Vercel env vars (or `.env` for local dev) —
-   scope both to every environment (Production, Preview, and Development if you use `vercel env
-   pull`). **Paste `AUTH_PASSWORD_HASH` exactly as printed — it's already base64-encoded, not the
-   raw bcrypt hash.** The app always base64-decodes this value before comparing (see
-   `src/lib/auth/password.ts`), because Next.js's own `.env` loader (`@next/env`, via
-   dotenv-expand) treats `$` as shell-style variable-expansion syntax and silently mangles a raw
-   `$2b$12$...` bcrypt hash — confirmed during Phase 10 that this happens for **local dev** even
-   though Vercel's dashboard-injected env vars aren't run through that same expansion. Pasting a
-   raw (non-base64) hash into Vercel would still *look* configured but silently reject every
-   login, since `verifyPassword` always attempts to base64-decode first — always use the
-   script's output verbatim, on every environment, not just locally. `SESSION_SECRET` is a plain
-   random hex string (no `$` in it) and isn't affected by this, but generate it the same way for
-   convenience. Rotating either value logs everyone out (all existing session cookies stop
-   verifying) — that's expected, not a bug.
+   Paste the printed line into Vercel env vars (or `.env` for local dev), scoped to every
+   environment. It's a plain random hex string. Rotating it logs everyone out (all existing
+   session cookies stop verifying) — expected, not a bug. If `SESSION_SECRET` is missing in an
+   environment, every login fails closed the same generic way (never falling through to
+   "authenticated").
+
+   **First account after the multi-user migration:** the migration
+   (`20260910114500_add_user_management`) created an owner account for `kavya.b.analyst@gmail.com`
+   holding all pre-existing data, with a sentinel password that can't be used to log in. Give it
+   a real password once, against whichever database it ran on:
+   ```bash
+   npx tsx scripts/set-password.ts kavya.b.analyst@gmail.com 'your-chosen-password'
+   ```
+   Everyone else just registers in the app at `/register`.
 
 ## 7. Deploying
 
@@ -245,8 +247,8 @@ run — not merely that `migrate deploy` exited 0.
 | Migration works locally but production schema drifts from what's expected | Someone ran `prisma db push` or hand-edited the DB instead of a migration | Never use `db push` outside local experimentation; if drift happens, resolve it with `prisma migrate resolve`, not by hand-editing production |
 | Seed data missing in production | Seeding isn't automatic (intentional) | Run `npx prisma db seed` manually once, pointed at the production `DATABASE_URL_UNPOOLED`, as a deliberate action |
 | `npm audit` shows a high-severity `deepmerge-ts` advisory | Transitive dependency of Prisma's own `@prisma/config` package (dev-tool only) | Don't run `npm audit fix --force` — it downgrades to Prisma 6. Known upstream issue, tracked in `CLAUDE.md` §3, revisit when Prisma patches it |
-| Login always says "Incorrect password" even with the right password | `AUTH_PASSWORD_HASH` was pasted as the raw `$2b$12$...` bcrypt hash instead of the script's base64-encoded output (Next's `.env` loader mangles `$` characters — see §6 step 5) | Regenerate with `npm run auth:hash-password -- 'your-password'` and paste that line exactly, don't hand-edit it |
-| Login always says "Incorrect password" no matter what's typed, even the right password | `AUTH_PASSWORD_HASH` or `SESSION_SECRET` missing in that environment — both fail closed by design (never falling through to "authenticated"), and a missing/invalid hash makes every password attempt fail the same generic way, not a distinct error | Confirm both are set in Vercel for the environment being hit (Production vs Preview), or in local `.env` |
+| Login always says "Incorrect email or password" no matter what's typed | `SESSION_SECRET` missing in that environment (fails closed by design — never falls through to "authenticated"), or you're using the pre-existing owner account whose password is still the migration sentinel | Confirm `SESSION_SECRET` is set in Vercel for the environment being hit (Production vs Preview) / local `.env`; for the owner account run `npx tsx scripts/set-password.ts <email> '<pw>'` once |
+| Can't register — "An account with this email already exists" for the owner email | The multi-user migration seeded that account; it can't self-register | Use `npx tsx scripts/set-password.ts kavya.b.analyst@gmail.com '<pw>'` then log in |
 
 ## 11. Separate dev/prod databases
 

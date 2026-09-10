@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { workDayEditSchema, workDayTimesSchema } from "@/lib/validation/workday";
 import {
   deleteWorkDay,
@@ -21,6 +22,7 @@ export async function updateWorkDayAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   const date = String(formData.get("date") ?? "");
 
@@ -45,7 +47,7 @@ export async function updateWorkDayAction(
   }
 
   const isDayOff = parsed.data.dayType !== "WORKING";
-  await updateWorkDay(id, {
+  await updateWorkDay(user.id, id, {
     notes: parsed.data.notes || undefined,
     dayType: parsed.data.dayType,
     dayNote: isDayOff ? parsed.data.dayNote || undefined : null,
@@ -59,7 +61,8 @@ export async function updateWorkDayAction(
 // removes the record the current /worklog/[date] page is showing, so there's nothing left to
 // revalidate in place. Lands on /dashboard, the app's home, same as logoutAction.
 export async function deleteWorkDayAction(id: string): Promise<void> {
-  await deleteWorkDay(id);
+  const user = await requireUser();
+  await deleteWorkDay(user.id, id);
   revalidateWorkViews();
   redirect("/dashboard");
 }
@@ -72,7 +75,8 @@ export async function startWorkAction(
   date: string,
   checkInAtIso: string,
 ): Promise<void> {
-  await startWork(workDayId, new Date(checkInAtIso));
+  const user = await requireUser();
+  await startWork(user.id, workDayId, new Date(checkInAtIso));
   revalidateWorkViews(date);
 }
 
@@ -81,22 +85,26 @@ export async function endWorkAction(
   date: string,
   checkOutAtIso: string,
 ): Promise<void> {
-  await endWork(workDayId, new Date(checkOutAtIso));
+  const user = await requireUser();
+  await endWork(user.id, workDayId, new Date(checkOutAtIso));
   revalidateWorkViews(date);
 }
 
 export async function resetWorkDayTimesAction(workDayId: string, date: string): Promise<void> {
-  await resetWorkDayTimes(workDayId);
+  const user = await requireUser();
+  await resetWorkDayTimes(user.id, workDayId);
   revalidateWorkViews(date);
 }
 
 export async function startBreakAction(workDayId: string, date: string): Promise<void> {
-  await startBreak(workDayId);
+  const user = await requireUser();
+  await startBreak(user.id, workDayId);
   revalidateWorkViews(date);
 }
 
 export async function endBreakAction(workDayId: string, date: string): Promise<void> {
-  await endBreak(workDayId);
+  const user = await requireUser();
+  await endBreak(user.id, workDayId);
   revalidateWorkViews(date);
 }
 
@@ -104,6 +112,7 @@ export async function updateWorkDayTimesAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   const date = String(formData.get("date") ?? "");
 
@@ -122,7 +131,7 @@ export async function updateWorkDayTimesAction(
   }
 
   const dayDate = parseDateOnly(date);
-  await updateWorkDayTimes(id, {
+  await updateWorkDayTimes(user.id, id, {
     checkIn: parsed.data.checkIn ? combineDateAndTime(dayDate, parsed.data.checkIn) : null,
     checkOut: parsed.data.checkOut ? combineDateAndTime(dayDate, parsed.data.checkOut) : null,
     breakSeconds: parsed.data.breakDuration,

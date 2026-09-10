@@ -1,22 +1,33 @@
 // @vitest-environment node
 import ExcelJS from "exceljs";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
 import { createWorkDay, listWorkDays } from "@/lib/data/workday";
 import { createTask } from "@/lib/data/task";
 import { buildWorkLogWorkbook } from "@/lib/excel/export";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_DATE_A = new Date("2099-10-01");
 const TEST_DATE_B = new Date("2099-10-02");
 
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
 afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: { in: [TEST_DATE_A, TEST_DATE_B] } } });
+  await prisma.workDay.deleteMany({ where: { userId, date: { in: [TEST_DATE_A, TEST_DATE_B] } } });
 });
 
 describe("Excel export — real database data end to end", () => {
   it("exports a real WorkDay with real tasks, and the file reads back correctly", async () => {
-    const workDay = await createWorkDay({ date: TEST_DATE_A });
+    const workDay = await createWorkDay({ userId, date: TEST_DATE_A });
     await prisma.workDay.update({
       where: { id: workDay.id },
       data: {
@@ -42,7 +53,7 @@ describe("Excel export — real database data end to end", () => {
       order: 1,
     });
 
-    const workDays = await listWorkDays({ from: TEST_DATE_A, to: TEST_DATE_A });
+    const workDays = await listWorkDays(userId, { from: TEST_DATE_A, to: TEST_DATE_A });
     const workbook = await buildWorkLogWorkbook(workDays, [1, 2, 3, 4, 5]);
     const buffer = await workbook.xlsx.writeBuffer();
 
@@ -65,16 +76,16 @@ describe("Excel export — real database data end to end", () => {
   });
 
   it("exports a real multi-day range spanning a holiday", async () => {
-    const workDay1 = await createWorkDay({ date: TEST_DATE_A });
+    const workDay1 = await createWorkDay({ userId, date: TEST_DATE_A });
     await createTask({ workDayId: workDay1.id, taskId: "T-1", description: "Day one", order: 0 });
 
-    const workDay2 = await createWorkDay({ date: TEST_DATE_B });
+    const workDay2 = await createWorkDay({ userId, date: TEST_DATE_B });
     await prisma.workDay.update({
       where: { id: workDay2.id },
       data: { dayType: "HOLIDAY", dayNote: "Test Holiday", status: "HOLIDAY" },
     });
 
-    const workDays = await listWorkDays({ from: TEST_DATE_A, to: TEST_DATE_B });
+    const workDays = await listWorkDays(userId, { from: TEST_DATE_A, to: TEST_DATE_B });
     const workbook = await buildWorkLogWorkbook(workDays, [1, 2, 3, 4, 5]);
     const buffer = await workbook.xlsx.writeBuffer();
 

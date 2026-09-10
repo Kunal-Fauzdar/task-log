@@ -1,6 +1,9 @@
 "use server";
 
+import { requireUser } from "@/lib/auth/current-user";
+import { parseDateOnly } from "@/lib/domain/date";
 import { taskInputSchema } from "@/lib/validation/task";
+import { findOrCreateWorkDayByDate } from "@/lib/data/workday";
 import {
   completeTaskTimer,
   createTask,
@@ -16,6 +19,8 @@ import {
 } from "@/lib/data/task";
 import { revalidateWorkViews } from "@/lib/actions/revalidate-work-views";
 import type { ActionState } from "@/lib/actions/types";
+
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseTaskForm(formData: FormData) {
   return taskInputSchema.safeParse({
@@ -38,8 +43,11 @@ export async function createTaskAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const workDayId = String(formData.get("workDayId") ?? "");
+  const user = await requireUser();
   const date = String(formData.get("date") ?? "");
+  if (!DATE_PARAM_PATTERN.test(date)) {
+    return { status: "error", message: "Something went wrong. Please reload and try again." };
+  }
 
   const parsed = parseTaskForm(formData);
   if (!parsed.success) {
@@ -50,15 +58,17 @@ export async function createTaskAction(
     };
   }
 
+  // Resolve the WorkDay from the user + date ourselves — never trust a client-supplied workDayId.
+  const workDay = await findOrCreateWorkDayByDate(user.id, parseDateOnly(date));
   const task = await createTask({
-    workDayId,
+    workDayId: workDay.id,
     taskId: parsed.data.taskId ?? "",
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || undefined,
     projectId: parsed.data.projectId || null,
   });
-  await setTaskSkills(task.id, parseSkillIds(formData));
+  await setTaskSkills(user.id, task.id, parseSkillIds(formData));
 
   revalidateWorkViews(date);
   return { status: "success" };
@@ -68,6 +78,7 @@ export async function updateTaskAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   const date = String(formData.get("date") ?? "");
 
@@ -80,26 +91,28 @@ export async function updateTaskAction(
     };
   }
 
-  await updateTask(id, {
+  await updateTask(user.id, id, {
     taskId: parsed.data.taskId ?? "",
     description: parsed.data.description,
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || null,
     projectId: parsed.data.projectId || null,
   });
-  await setTaskSkills(id, parseSkillIds(formData));
+  await setTaskSkills(user.id, id, parseSkillIds(formData));
 
   revalidateWorkViews(date);
   return { status: "success" };
 }
 
 export async function deleteTaskAction(id: string, date: string): Promise<void> {
-  await deleteTask(id);
+  const user = await requireUser();
+  await deleteTask(user.id, id);
   revalidateWorkViews(date);
 }
 
 export async function duplicateTaskAction(id: string, date: string): Promise<void> {
-  await duplicateTask(id);
+  const user = await requireUser();
+  await duplicateTask(user.id, id);
   revalidateWorkViews(date);
 }
 
@@ -109,7 +122,8 @@ export async function moveTaskAction(
   taskId: string,
   direction: "up" | "down",
 ): Promise<void> {
-  const tasks = await getTasksByWorkDay(workDayId);
+  const user = await requireUser();
+  const tasks = await getTasksByWorkDay(user.id, workDayId);
   const target = tasks.find((t) => t.id === taskId);
   if (!target) return;
 
@@ -126,26 +140,30 @@ export async function moveTaskAction(
   const b = ids.indexOf(swapSibling.id);
   [ids[a], ids[b]] = [ids[b], ids[a]];
 
-  await reorderTasks(ids);
+  await reorderTasks(user.id, ids);
   revalidateWorkViews(date);
 }
 
 export async function startTaskTimerAction(id: string, date: string): Promise<void> {
-  await startTaskTimer(id);
+  const user = await requireUser();
+  await startTaskTimer(user.id, id);
   revalidateWorkViews(date);
 }
 
 export async function pauseTaskTimerAction(id: string, date: string): Promise<void> {
-  await pauseTaskTimer(id);
+  const user = await requireUser();
+  await pauseTaskTimer(user.id, id);
   revalidateWorkViews(date);
 }
 
 export async function resumeTaskTimerAction(id: string, date: string): Promise<void> {
-  await resumeTaskTimer(id);
+  const user = await requireUser();
+  await resumeTaskTimer(user.id, id);
   revalidateWorkViews(date);
 }
 
 export async function completeTaskTimerAction(id: string, date: string): Promise<void> {
-  await completeTaskTimer(id);
+  const user = await requireUser();
+  await completeTaskTimer(user.id, id);
   revalidateWorkViews(date);
 }

@@ -46,10 +46,31 @@ enum SkillCategory {
   MORE_THAN_70
 }
 
+/// An account. Registration is open (public sign-up), email is the login identifier, `name` is
+/// the display name shown in the UI. Every domain row is owned by exactly one User via `userId`
+/// (onDelete: Cascade) — see CLAUDE.md §3/§4 for the move from single-user to per-user data.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  workDays     WorkDay[]
+  skills       Skill[]
+  projects     Project[]
+  holidays     Holiday[]
+  settings     AppSettings?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
 /// One row per calendar day the user has touched (started work, or marked a holiday).
 /// Day-of-week is always derived from `date` at read time — never stored.
 model WorkDay {
   id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   date           DateTime      @db.Date
   checkIn        DateTime?
   checkOut       DateTime?
@@ -65,7 +86,8 @@ model WorkDay {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  @@unique([date])
+  @@unique([userId, date])
+  @@index([userId])
   @@map("work_days")
 }
 
@@ -96,16 +118,20 @@ model Task {
   @@map("tasks")
 }
 
-/// A project a task can be filed under. Global (spans every work day), not per-WorkDay. The
-/// Excel export can filter to a single project to produce a per-project timesheet; a task with
-/// no project just contributes its day's timings to the default (all-projects) export.
+/// A project a task can be filed under. Per-user, spans all of that user's work days. The Excel
+/// export can filter to a single project to produce a per-project timesheet; a task with no
+/// project just contributes its day's timings to the default (all-projects) export.
 model Project {
   id        String   @id @default(cuid())
-  name      String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
   tasks     Task[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, name])
+  @@index([userId])
   @@map("projects")
 }
 
@@ -113,7 +139,9 @@ model Project {
 /// never set directly by callers, including the seed script.
 model Skill {
   id                    String         @id @default(cuid())
-  name                  String         @unique
+  userId                String
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                  String
   category              SkillCategory
   proficiencyPercentage Int
   notes                 String?
@@ -122,6 +150,8 @@ model Skill {
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
+  @@unique([userId, name])
+  @@index([userId])
   @@map("skills")
 }
 
@@ -151,12 +181,12 @@ model TaskSkill {
   @@map("task_skills")
 }
 
-/// Single-row app-wide config (single-user app, no per-user settings — CLAUDE.md §3). Always
-/// read/written via id = "singleton" (see src/lib/data/settings.ts); Prisma has no native
-/// "singleton table" concept, so this is the established pattern for one instead of a bare
-/// key-value table with no shape.
+/// Per-user config, one row per User (see src/lib/data/settings.ts, upsert-on-read keyed by
+/// userId). Was a single `id = "singleton"` row when the app was single-user.
 model AppSettings {
-  id          String   @id @default("singleton")
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Day-of-week numbers, 0 (Sunday) - 6 (Saturday), matching JS's Date#getUTCDay() convention
   /// already used everywhere else in this codebase (see isWeekend in src/lib/domain/date.ts).
   /// Drives which blank days a month/range Excel export fills in for days never logged — see
@@ -167,14 +197,18 @@ model AppSettings {
   @@map("app_settings")
 }
 
-/// Reference calendar of known holidays (national/company), distinct from WorkDay.isHoliday
-/// (the actual recorded status for a day) — see CLAUDE.md §3 for why these are separate.
+/// Per-user reference calendar of known holidays (national/company), distinct from
+/// WorkDay.dayType (the actual recorded status for a day) — see CLAUDE.md §3 for why separate.
 model Holiday {
   id        String   @id @default(cuid())
-  date      DateTime @db.Date @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, date])
+  @@index([userId])
   @@map("holidays")
 }

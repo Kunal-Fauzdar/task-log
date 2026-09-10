@@ -1,48 +1,48 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { prisma } from "@/lib/db";
 import { getWorkingDays, updateWorkingDays } from "@/lib/data/settings";
 import { DEFAULT_WORKING_DAYS } from "@/lib/domain/settings";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
-// AppSettings is a genuine singleton (id: "singleton"), not a disposable fake-dated fixture like
-// most other integration tests in this project — there's only ever one real row, and it's the
-// one the running app actually reads. Snapshot it before the test and restore it after, rather
-// than deleting/leaving test values behind in a row every other test (and the real app) shares.
-let originalRow: { workingDays: number[] } | null = null;
+// AppSettings is now one row per user (@@unique([userId])). Each test file gets its own
+// throwaway user, so there's no shared singleton to snapshot/restore any more — deleting the
+// user cascades its settings row away.
+let userId: string;
 
-beforeEach(async () => {
-  originalRow = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
 });
 
-afterEach(async () => {
-  if (originalRow) {
-    await prisma.appSettings.update({
-      where: { id: "singleton" },
-      data: { workingDays: originalRow.workingDays },
-    });
-  } else {
-    await prisma.appSettings.deleteMany({ where: { id: "singleton" } });
-  }
+afterAll(async () => {
+  await deleteTestUser(userId);
 });
 
 describe("Settings (working days)", () => {
-  it("creates the singleton row with the default on first read", async () => {
-    await prisma.appSettings.deleteMany({ where: { id: "singleton" } });
-
-    const workingDays = await getWorkingDays();
+  it("creates the row with the default on first read", async () => {
+    const workingDays = await getWorkingDays(userId);
     expect(workingDays).toEqual(DEFAULT_WORKING_DAYS);
-
-    const row = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
-    expect(row?.workingDays).toEqual(DEFAULT_WORKING_DAYS);
   });
 
   it("updates and persists a custom working-days configuration", async () => {
     const sunThu = [0, 1, 2, 3, 4];
-    const updated = await updateWorkingDays(sunThu);
+    const updated = await updateWorkingDays(userId, sunThu);
     expect(updated).toEqual(sunThu);
 
-    const fetched = await getWorkingDays();
+    const fetched = await getWorkingDays(userId);
     expect(fetched).toEqual(sunThu);
+  });
+
+  it("keeps each user's working days independent", async () => {
+    const other = await createTestUser();
+    try {
+      await updateWorkingDays(userId, [1, 2, 3]);
+      await updateWorkingDays(other.id, [5, 6]);
+
+      expect(await getWorkingDays(userId)).toEqual([1, 2, 3]);
+      expect(await getWorkingDays(other.id)).toEqual([5, 6]);
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 });

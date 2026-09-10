@@ -4,6 +4,7 @@ import { prisma } from "../src/lib/db";
 import { createWorkDay } from "../src/lib/data/workday";
 import { getDayName } from "../src/lib/domain/date";
 import { buildWorkLogWorkbook, type ExportWorkDay } from "../src/lib/excel/export";
+import { e2eUserId } from "./helpers";
 
 // Each test owns a dedicated date and its own cleanup — playwright.config.ts sets
 // fullyParallel: true (see CLAUDE.md's Phase 8 lesson about shared test-data dates racing under
@@ -48,14 +49,14 @@ test("uploads a WorkLog export, previews it, and imports the new day", async ({ 
     await expect(page.getByText("1 day(s) imported.")).toBeVisible();
 
     const saved = await prisma.workDay.findUnique({
-      where: { date: testDate },
+      where: { userId_date: { userId: await e2eUserId(), date: testDate } },
       include: { tasks: true },
     });
     expect(saved?.status).toBe("COMPLETED");
     expect(saved?.tasks).toHaveLength(1);
     expect(saved?.tasks[0]).toMatchObject({ taskId: "T-8001", link: "https://example.com/T-8001" });
   } finally {
-    await prisma.workDay.deleteMany({ where: { date: testDate } });
+    await prisma.workDay.deleteMany({ where: { userId: await e2eUserId(), date: testDate } });
   }
 });
 
@@ -65,7 +66,7 @@ test("flags a day that already exists as a duplicate and does not let it be re-i
   const testDate = new Date(Date.UTC(2099, 9, 21)); // 2099-10-21
 
   try {
-    await createWorkDay({ date: testDate });
+    await createWorkDay({ userId: await e2eUserId(), date: testDate });
 
     const workbook = await buildWorkLogWorkbook([
       {
@@ -89,6 +90,6 @@ test("flags a day that already exists as a duplicate and does not let it be re-i
     const confirmButton = page.getByRole("button", { name: /^Confirm Import/ });
     await expect(confirmButton).toBeDisabled();
   } finally {
-    await prisma.workDay.deleteMany({ where: { date: testDate } });
+    await prisma.workDay.deleteMany({ where: { userId: await e2eUserId(), date: testDate } });
   }
 });

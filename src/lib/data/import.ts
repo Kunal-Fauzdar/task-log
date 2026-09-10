@@ -13,13 +13,16 @@ export type ImportOutcome = {
 // automatically") — a date that already has a WorkDay row is skipped, not merged or replaced.
 // Each group is its own transaction so one bad day can't roll back an otherwise-successful batch
 // import.
-export async function importWorkDayGroups(groups: ImportGroupInput[]): Promise<ImportOutcome> {
+export async function importWorkDayGroups(
+  userId: string,
+  groups: ImportGroupInput[],
+): Promise<ImportOutcome> {
   const outcome: ImportOutcome = { importedCount: 0, skippedDuplicates: [], failed: [] };
 
   for (const group of groups) {
     const date = parseDateOnly(group.date);
     try {
-      const existing = await prisma.workDay.findUnique({ where: { date } });
+      const existing = await prisma.workDay.findUnique({ where: { userId_date: { userId, date } } });
       if (existing) {
         outcome.skippedDuplicates.push(group.date);
         continue;
@@ -32,6 +35,7 @@ export async function importWorkDayGroups(groups: ImportGroupInput[]): Promise<I
       await prisma.$transaction(async (tx) => {
         const workDay = await tx.workDay.create({
           data: {
+            userId,
             date,
             checkIn,
             checkOut,

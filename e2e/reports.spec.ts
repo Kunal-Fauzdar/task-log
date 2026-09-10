@@ -4,6 +4,7 @@ import { prisma } from "../src/lib/db";
 import { createWorkDay } from "../src/lib/data/workday";
 import { createTask, setTaskSkills } from "../src/lib/data/task";
 import { createSkill, deleteSkill } from "../src/lib/data/skill";
+import { e2eUserId } from "./helpers";
 
 // A dedicated date/skill name per test, not shared at file scope — playwright.config.ts sets
 // fullyParallel: true, so the two tests in this file run concurrently in separate workers. A
@@ -15,8 +16,9 @@ const SEEDED_TEST_DATE = new Date("2099-12-20");
 const SKILL_NAME = "Playwright Reports Skill 2099";
 
 test("reports page shows aggregated stats and tables for a filtered date range", async ({ page }) => {
-  const skill = await createSkill({ name: SKILL_NAME, proficiencyPercentage: 40 });
-  const workDay = await createWorkDay({ date: SEEDED_TEST_DATE });
+  const userId = await e2eUserId();
+  const skill = await createSkill({ userId, name: SKILL_NAME, proficiencyPercentage: 40 });
+  const workDay = await createWorkDay({ userId, date: SEEDED_TEST_DATE });
   await prisma.workDay.update({
     where: { id: workDay.id },
     data: {
@@ -31,7 +33,7 @@ test("reports page shows aggregated stats and tables for a filtered date range",
     description: "Reports e2e task",
     durationSeconds: 3600,
   });
-  await setTaskSkills(task.id, [skill.id]);
+  await setTaskSkills(userId, task.id, [skill.id]);
 
   try {
     await page.goto("/reports?from=2099-12-20&to=2099-12-20");
@@ -52,8 +54,8 @@ test("reports page shows aggregated stats and tables for a filtered date range",
     // Monthly Summary
     await expect(page.getByText("December 2099")).toBeVisible();
   } finally {
-    await prisma.workDay.deleteMany({ where: { date: SEEDED_TEST_DATE } });
-    await deleteSkill(skill.id);
+    await prisma.workDay.deleteMany({ where: { userId, date: SEEDED_TEST_DATE } });
+    await deleteSkill(userId, skill.id);
   }
 });
 

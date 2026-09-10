@@ -1,26 +1,36 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_DATE = new Date("2099-08-01");
 const SKILL_NAME = "DB Constraint Test Skill 2099";
 
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
 afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
-  const skill = await prisma.skill.findUnique({ where: { name: SKILL_NAME } });
+  await prisma.workDay.deleteMany({ where: { userId, date: TEST_DATE } });
+  const skill = await prisma.skill.findUnique({ where: { userId_name: { userId, name: SKILL_NAME } } });
   if (skill) await prisma.skill.delete({ where: { id: skill.id } });
 });
 
 // Phase 10 (Security & Hardening): the app's Zod layer already rejects these values before they
 // ever reach Prisma — these tests instead call prisma.*.create directly, bypassing that layer
-// entirely, to prove the database itself enforces the invariant as defense-in-depth (e.g. against
-// a future bug in a data-layer function that skips validation). See the migration.sql in
+// entirely, to prove the database itself enforces the invariant as defense-in-depth. See
 // prisma/migrations/20260825115715_add_check_constraints for the constraints themselves.
 describe("database CHECK constraints — defense in depth against invalid writes", () => {
   it("rejects a negative WorkDay.breakSeconds even when Prisma is called directly", async () => {
     await expect(
-      prisma.workDay.create({ data: { date: TEST_DATE, breakSeconds: -1 } }),
+      prisma.workDay.create({ data: { userId, date: TEST_DATE, breakSeconds: -1 } }),
     ).rejects.toThrow();
   });
 
@@ -28,6 +38,7 @@ describe("database CHECK constraints — defense in depth against invalid writes
     await expect(
       prisma.workDay.create({
         data: {
+          userId,
           date: TEST_DATE,
           checkIn: new Date(Date.UTC(2099, 7, 1, 17, 0)),
           checkOut: new Date(Date.UTC(2099, 7, 1, 9, 0)),
@@ -37,7 +48,7 @@ describe("database CHECK constraints — defense in depth against invalid writes
   });
 
   it("rejects a negative Task.durationSeconds even when Prisma is called directly", async () => {
-    const workDay = await prisma.workDay.create({ data: { date: TEST_DATE } });
+    const workDay = await prisma.workDay.create({ data: { userId, date: TEST_DATE } });
     await expect(
       prisma.task.create({
         data: {
@@ -53,7 +64,7 @@ describe("database CHECK constraints — defense in depth against invalid writes
   it("rejects an out-of-range Skill.proficiencyPercentage even when Prisma is called directly", async () => {
     await expect(
       prisma.skill.create({
-        data: { name: SKILL_NAME, category: "MORE_THAN_70", proficiencyPercentage: 150 },
+        data: { userId, name: SKILL_NAME, category: "MORE_THAN_70", proficiencyPercentage: 150 },
       }),
     ).rejects.toThrow();
   });

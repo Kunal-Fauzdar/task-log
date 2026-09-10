@@ -1,5 +1,6 @@
 import { BarChart3, Briefcase, ClipboardList } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { listWorkDays } from "@/lib/data/workday";
 import { getTasksInRange } from "@/lib/data/reports";
 import { formatDateOnly, parseDateOnly } from "@/lib/domain/date";
@@ -50,12 +51,13 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  const user = await requireUser();
   const params = await searchParams;
   const range = resolveRange(params);
 
   const [workDays, tasks] = await Promise.all([
-    listWorkDays(range),
-    getTasksInRange(range),
+    listWorkDays(user.id, range),
+    getTasksInRange(user.id, range),
   ]);
 
   const workSummary = buildWorkSummary(workDays, tasks);

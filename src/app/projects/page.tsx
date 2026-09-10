@@ -1,11 +1,13 @@
 import { FolderKanban } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { listProjectsWithTaskCounts } from "@/lib/data/project";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProjectManager } from "@/components/project/project-manager";
 
 export default async function ProjectsPage() {
-  const projects = await listProjectsWithTaskCounts();
+  const user = await requireUser();
+  const projects = await listProjectsWithTaskCounts(user.id);
 
   return (
     <div className="flex flex-col gap-5">

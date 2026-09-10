@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
 import {
@@ -11,37 +11,48 @@ import {
   updateSkill,
   updateSkillProficiency,
 } from "@/lib/data/skill";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_SKILL_NAME = "__test__ Skill A";
 
-// Skill mutations return null when the skill no longer exists (see tolerateAlreadyDeleted in
-// src/lib/data/shared.ts) — every call site below expects the skill to genuinely exist, so this
-// narrows the type instead of repeating a null check everywhere.
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
+// Skill mutations return null when the skill no longer exists / isn't the caller's (see
+// tolerateAlreadyDeleted in src/lib/data/shared.ts) — every call site below expects the skill
+// to genuinely exist, so this narrows the type instead of repeating a null check everywhere.
 function unwrap<T>(value: T | null): T {
   if (value === null) throw new Error("expected a non-null result");
   return value;
 }
 
 afterEach(async () => {
-  await prisma.skill.deleteMany({ where: { name: TEST_SKILL_NAME } });
+  await prisma.skill.deleteMany({ where: { userId, name: TEST_SKILL_NAME } });
 });
 
 describe("Skill", () => {
   it("derives category from proficiency on creation", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
     expect(skill.category).toBe("BETWEEN_30_70");
   });
 
   it("does not write SkillHistory on initial creation", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
     const history = await prisma.skillHistory.findMany({ where: { skillId: skill.id } });
     expect(history).toHaveLength(0);
   });
 
   it("records history and updates category when proficiency changes", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
 
-    const updated = unwrap(await updateSkillProficiency(skill.id, 80));
+    const updated = unwrap(await updateSkillProficiency(userId, skill.id, 80));
 
     expect(updated.proficiencyPercentage).toBe(80);
     expect(updated.category).toBe("MORE_THAN_70");
@@ -52,17 +63,17 @@ describe("Skill", () => {
   });
 
   it("does not record history when the new value equals the current value", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
 
-    await updateSkillProficiency(skill.id, 50);
+    await updateSkillProficiency(userId, skill.id, 50);
 
     const history = await prisma.skillHistory.findMany({ where: { skillId: skill.id } });
     expect(history).toHaveLength(0);
   });
 
   it("cascades: deleting a skill deletes its history", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    await updateSkillProficiency(skill.id, 80);
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    await updateSkillProficiency(userId, skill.id, 80);
 
     await prisma.skill.delete({ where: { id: skill.id } });
 
@@ -70,25 +81,37 @@ describe("Skill", () => {
     expect(history).toHaveLength(0);
   });
 
-  it("enforces unique skill names", async () => {
-    await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+  it("enforces unique skill names per user", async () => {
+    await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
     await expect(
-      createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 10 }),
+      createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 10 }),
     ).rejects.toThrow();
   });
 
+  it("lets a different user have a skill with the same name", async () => {
+    const other = await createTestUser();
+    try {
+      await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+      await expect(
+        createSkill({ userId: other.id, name: TEST_SKILL_NAME, proficiencyPercentage: 10 }),
+      ).resolves.toBeTruthy();
+    } finally {
+      await deleteTestUser(other.id);
+    }
+  });
+
   it("getSkillByName finds the created skill", async () => {
-    await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    const found = await getSkillByName(TEST_SKILL_NAME);
+    await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const found = await getSkillByName(userId, TEST_SKILL_NAME);
     expect(found?.name).toBe(TEST_SKILL_NAME);
   });
 });
 
 describe("updateSkill", () => {
   it("updates name/notes without touching proficiency or writing history", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
 
-    const updated = unwrap(await updateSkill(skill.id, { notes: "New notes" }));
+    const updated = unwrap(await updateSkill(userId, skill.id, { notes: "New notes" }));
 
     expect(updated.notes).toBe("New notes");
     expect(updated.proficiencyPercentage).toBe(50);
@@ -97,10 +120,10 @@ describe("updateSkill", () => {
   });
 
   it("updates proficiency (with history) and other fields together in one call", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
 
     const updated = unwrap(
-      await updateSkill(skill.id, { notes: "Leveled up", proficiencyPercentage: 90 }),
+      await updateSkill(userId, skill.id, { notes: "Leveled up", proficiencyPercentage: 90 }),
     );
 
     expect(updated.notes).toBe("Leveled up");
@@ -109,48 +132,69 @@ describe("updateSkill", () => {
     const history = await prisma.skillHistory.findMany({ where: { skillId: skill.id } });
     expect(history).toHaveLength(1);
   });
+
+  it("returns null for another user's skill", async () => {
+    const other = await createTestUser();
+    try {
+      const foreign = await createSkill({
+        userId: other.id,
+        name: TEST_SKILL_NAME,
+        proficiencyPercentage: 50,
+      });
+      await expect(updateSkill(userId, foreign.id, { notes: "nope" })).resolves.toBeNull();
+      await expect(updateSkillProficiency(userId, foreign.id, 90)).resolves.toBeNull();
+    } finally {
+      await deleteTestUser(other.id);
+    }
+  });
 });
 
 describe("deleteSkill", () => {
   it("deletes the skill", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    await deleteSkill(skill.id);
-    const found = await getSkillByName(TEST_SKILL_NAME);
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    await deleteSkill(userId, skill.id);
+    const found = await getSkillByName(userId, TEST_SKILL_NAME);
     expect(found).toBeNull();
   });
 
   it("mutating a skill that no longer exists returns null instead of throwing", async () => {
-    // Regression test: found via Playwright e2e runs, same class of bug as the Task one in
-    // src/test/integration/task.test.ts. See tolerateAlreadyDeleted in src/lib/data/shared.ts.
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    await deleteSkill(skill.id);
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    await deleteSkill(userId, skill.id);
 
-    await expect(updateSkill(skill.id, { notes: "Too late" })).resolves.toBeNull();
-    await expect(updateSkillProficiency(skill.id, 90)).resolves.toBeNull();
-    await expect(deleteSkill(skill.id)).resolves.toBeNull();
+    await expect(updateSkill(userId, skill.id, { notes: "Too late" })).resolves.toBeNull();
+    await expect(updateSkillProficiency(userId, skill.id, 90)).resolves.toBeNull();
+    await expect(deleteSkill(userId, skill.id)).resolves.toBeNull();
   });
 });
 
 describe("getSkillById / listSkills", () => {
   it("getSkillById includes history ordered most-recent-first", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    await updateSkillProficiency(skill.id, 60);
-    await updateSkillProficiency(skill.id, 70);
+    const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+    await updateSkillProficiency(userId, skill.id, 60);
+    await updateSkillProficiency(userId, skill.id, 70);
 
-    const found = await getSkillById(skill.id);
+    const found = await getSkillById(userId, skill.id);
 
     expect(found?.history).toHaveLength(2);
     expect(found?.history[0]).toMatchObject({ fromPercentage: 60, toPercentage: 70 });
   });
 
-  it("listSkills includes the newly created skill with its history", async () => {
-    const skill = await createSkill({ name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
-    await updateSkillProficiency(skill.id, 60);
+  it("listSkills includes the newly created skill and excludes other users' skills", async () => {
+    const other = await createTestUser();
+    try {
+      const skill = await createSkill({ userId, name: TEST_SKILL_NAME, proficiencyPercentage: 50 });
+      await updateSkillProficiency(userId, skill.id, 60);
+      const foreign = await createSkill({
+        userId: other.id,
+        name: TEST_SKILL_NAME,
+        proficiencyPercentage: 50,
+      });
 
-    const all = await listSkills();
-    const found = all.find((s) => s.id === skill.id);
-
-    expect(found).toBeDefined();
-    expect(found?.history).toHaveLength(1);
+      const all = await listSkills(userId);
+      expect(all.find((s) => s.id === skill.id)?.history).toHaveLength(1);
+      expect(all.some((s) => s.id === foreign.id)).toBe(false);
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 });

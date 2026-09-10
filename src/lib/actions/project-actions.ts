@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { createProject, deleteProject } from "@/lib/data/project";
 import { projectInputSchema } from "@/lib/validation/project";
 import { Prisma } from "../../generated/prisma/client.ts";
@@ -19,6 +20,7 @@ export async function createProjectAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const parsed = projectInputSchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
     return {
@@ -29,7 +31,7 @@ export async function createProjectAction(
   }
 
   try {
-    await createProject({ name: parsed.data.name });
+    await createProject({ userId: user.id, name: parsed.data.name });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return {
@@ -49,6 +51,7 @@ export async function createProjectAction(
 // worklog day pages that showed those tasks under a project heading now show them under
 // "No project", so those need revalidating too.
 export async function deleteProjectAction(id: string): Promise<void> {
-  await deleteProject(id);
+  const user = await requireUser();
+  await deleteProject(user.id, id);
   revalidateProjectViews();
 }

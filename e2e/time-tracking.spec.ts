@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
 import { getLocalISODate } from "../src/lib/domain/date";
+import { e2eUserId } from "./helpers";
 
 // Start/End Work quick-actions are only offered for *today's* page (see
 // src/hooks/use-is-today.ts), so this test must use the real current date, not a fixed
@@ -9,7 +10,9 @@ import { getLocalISODate } from "../src/lib/domain/date";
 const TODAY_PARAM = getLocalISODate(new Date());
 
 test.afterEach(async () => {
-  const workDay = await prisma.workDay.findUnique({ where: { date: new Date(`${TODAY_PARAM}T00:00:00.000Z`) } });
+  const workDay = await prisma.workDay.findUnique({
+    where: { userId_date: { userId: await e2eUserId(), date: new Date(`${TODAY_PARAM}T00:00:00.000Z`) } },
+  });
   if (workDay) {
     await prisma.task.deleteMany({ where: { workDayId: workDay.id } });
     await prisma.workDay.update({

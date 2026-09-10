@@ -1,11 +1,13 @@
 import { GraduationCap } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { listSkills } from "@/lib/data/skill";
 import { PageHeader } from "@/components/layout/page-header";
 import { SkillMap } from "@/components/skill/skill-map";
 
 export default async function SkillsPage() {
-  const skills = await listSkills();
+  const user = await requireUser();
+  const skills = await listSkills(user.id);
 
   return (
     <div className="flex flex-col gap-5">

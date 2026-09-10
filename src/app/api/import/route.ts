@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/db";
 import { formatDateOnly, parseDateOnly } from "@/lib/domain/date";
 import { parseWorkLogWorkbook } from "@/lib/excel/import";
@@ -10,6 +11,11 @@ import { parseWorkLogWorkbook } from "@/lib/excel/import";
 // src/lib/actions/import-actions.ts for the confirm step). This endpoint never writes to the
 // database — it only parses and previews (spec §30: "show an import preview").
 export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
 
@@ -39,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   const dates = preview.groups.map((group) => parseDateOnly(group.date));
   const existing = await prisma.workDay.findMany({
-    where: { date: { in: dates } },
+    where: { userId: user.id, date: { in: dates } },
     select: { date: true },
   });
   const existingDates = new Set(existing.map((workDay) => formatDateOnly(workDay.date)));

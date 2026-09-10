@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { listWorkDays } from "@/lib/data/workday";
 import { getProjectById } from "@/lib/data/project";
 import { getWorkingDays } from "@/lib/data/settings";
@@ -20,6 +21,13 @@ function getServerToday(): Date {
 // Route Handler, not a Server Action (CLAUDE.md §3) — this returns a binary xlsx download, not
 // HTML, so it needs the raw Response control a Server Action doesn't give.
 export async function GET(request: NextRequest) {
+  // src/proxy.ts already blocks unauthenticated requests with a 401; this also gives us the
+  // owner id to scope every query below.
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const query = Object.fromEntries(request.nextUrl.searchParams);
   const parsed = exportQuerySchema.safeParse(query);
 
@@ -30,9 +38,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Optional per-project timesheet filter. An unknown id → 404 rather than silently exporting
-  // everything (a stale bookmark shouldn't look like it worked).
-  const project = parsed.data.projectId ? await getProjectById(parsed.data.projectId) : null;
+  // Optional per-project timesheet filter. An unknown id (or another user's) → 404 rather than
+  // silently exporting everything (a stale bookmark shouldn't look like it worked).
+  const project = parsed.data.projectId
+    ? await getProjectById(user.id, parsed.data.projectId)
+    : null;
   if (parsed.data.projectId && !project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
@@ -57,7 +67,10 @@ export async function GET(request: NextRequest) {
     filename = getExportFilename("range", { from, to }, projectName);
   }
 
-  const [workDays, workingDays] = await Promise.all([listWorkDays({ from, to }), getWorkingDays()]);
+  const [workDays, workingDays] = await Promise.all([
+    listWorkDays(user.id, { from, to }),
+    getWorkingDays(user.id),
+  ]);
   // A project filter keeps every work day (so its timings still export) but limits each day's
   // task rows to that project — a day with no matching task then renders as a timings-only row.
   const scopedWorkDays = project

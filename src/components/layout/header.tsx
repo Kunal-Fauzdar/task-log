@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth-actions";
+import type { CurrentUser } from "@/lib/auth/current-user";
 import { Logo } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,40 @@ function NavList({
   );
 }
 
-export function Header() {
+// Account link + Log Out, pinned to the bottom of the sidebar and the mobile drawer.
+function AccountFooter({
+  user,
+  onNavigate,
+}: {
+  user: CurrentUser | null;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="border-border border-t p-3">
+      {user && (
+        <Link
+          href="/account"
+          onClick={onNavigate}
+          className="text-foreground hover:bg-secondary focus-visible:ring-ring mb-1 flex flex-col rounded-md px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        >
+          <span className="truncate text-sm font-medium">{user.name}</span>
+          <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+        </Link>
+      )}
+      <form action={logoutAction}>
+        <button
+          type="submit"
+          className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
+        >
+          <LogOut className="size-4" />
+          Log Out
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export function Header({ user }: { user: CurrentUser | null }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -107,15 +141,7 @@ export function Header() {
         >
           <NavList isActiveHref={isActiveHref} />
         </nav>
-        <form action={logoutAction} className="border-border border-t p-3">
-          <button
-            type="submit"
-            className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <LogOut className="size-4" />
-            Log Out
-          </button>
-        </form>
+        <AccountFooter user={user} />
       </aside>
 
       {/* Mobile: top bar + slide-in drawer. */}
@@ -165,15 +191,7 @@ export function Header() {
         <nav aria-label="Primary mobile" className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-3">
           <NavList isActiveHref={isActiveHref} onNavigate={() => setMobileOpen(false)} />
         </nav>
-        <form action={logoutAction} className="border-border border-t p-3">
-          <button
-            type="submit"
-            className="text-muted-foreground hover:bg-secondary hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-          >
-            <LogOut className="size-4" />
-            Log Out
-          </button>
-        </form>
+        <AccountFooter user={user} onNavigate={() => setMobileOpen(false)} />
       </div>
     </>
   );

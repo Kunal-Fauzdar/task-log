@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Playfair_Display, JetBrains_Mono } from "next/font/google";
 
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { AppShell } from "@/components/layout/app-shell";
 
 import "./globals.css";
@@ -33,15 +34,17 @@ export const metadata: Metadata = {
   description: "Daily work log, time tracking, and skill map for personal productivity.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getCurrentUser();
+
   return (
     <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
       <body className="min-h-screen antialiased">
-        <AppShell>{children}</AppShell>
+        <AppShell user={user}>{children}</AppShell>
       </body>
     </html>
   );

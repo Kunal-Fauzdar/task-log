@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSessionToken, isValidSessionToken } from "@/lib/auth/session";
+import { createSessionToken, isValidSessionToken, readSessionToken } from "@/lib/auth/session";
+
+const UID = "usr_test_0000000000000000";
 
 describe("session tokens", () => {
   beforeEach(() => {
@@ -12,14 +14,17 @@ describe("session tokens", () => {
     vi.useRealTimers();
   });
 
-  it("a freshly created token is valid", () => {
-    expect(isValidSessionToken(createSessionToken())).toBe(true);
+  it("a freshly created token is valid and round-trips the user id", () => {
+    const token = createSessionToken(UID);
+    expect(isValidSessionToken(token)).toBe(true);
+    expect(readSessionToken(token)?.uid).toBe(UID);
   });
 
   it("rejects a missing token", () => {
     expect(isValidSessionToken(undefined)).toBe(false);
     expect(isValidSessionToken(null)).toBe(false);
     expect(isValidSessionToken("")).toBe(false);
+    expect(readSessionToken(undefined)).toBeNull();
   });
 
   it("rejects a malformed token", () => {
@@ -28,22 +33,31 @@ describe("session tokens", () => {
   });
 
   it("rejects a token whose signature was tampered with", () => {
-    const token = createSessionToken();
+    const token = createSessionToken(UID);
     const [payload] = token.split(".");
     expect(isValidSessionToken(`${payload}.tamperedSignatureValue`)).toBe(false);
   });
 
   it("rejects a token whose payload was tampered with", () => {
-    const token = createSessionToken();
+    const token = createSessionToken(UID);
     const [, signature] = token.split(".");
-    const forgedPayload = Buffer.from(JSON.stringify({ iat: Date.now() + 999999 })).toString(
-      "base64url",
-    );
+    const forgedPayload = Buffer.from(
+      JSON.stringify({ uid: "attacker", iat: Date.now() }),
+    ).toString("base64url");
     expect(isValidSessionToken(`${forgedPayload}.${signature}`)).toBe(false);
   });
 
+  it("rejects a token that carries no uid", () => {
+    // Hand-sign a payload with the test secret but no `uid` (the shape old single-user tokens
+    // had) — it must not be accepted now.
+    const token = createSessionToken(UID);
+    const [, signature] = token.split(".");
+    const noUid = Buffer.from(JSON.stringify({ iat: Date.now() })).toString("base64url");
+    expect(isValidSessionToken(`${noUid}.${signature}`)).toBe(false);
+  });
+
   it("rejects a token signed with a different secret", () => {
-    const token = createSessionToken();
+    const token = createSessionToken(UID);
     vi.stubEnv("SESSION_SECRET", "a-different-secret");
     expect(isValidSessionToken(token)).toBe(false);
   });
@@ -51,7 +65,7 @@ describe("session tokens", () => {
   it("rejects an expired token", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
-    const token = createSessionToken();
+    const token = createSessionToken(UID);
 
     vi.setSystemTime(new Date("2026-02-15T00:00:00Z")); // 45 days later — past the 30-day max age
     expect(isValidSessionToken(token)).toBe(false);
@@ -60,18 +74,14 @@ describe("session tokens", () => {
   it("stays valid just under the 30-day max age", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
-    const token = createSessionToken();
+    const token = createSessionToken(UID);
 
     vi.setSystemTime(new Date("2026-01-29T00:00:00Z")); // 28 days later
     expect(isValidSessionToken(token)).toBe(true);
   });
 
   it("fails closed when SESSION_SECRET is unset", () => {
-    const token = createSessionToken();
-    // vi.unstubAllEnvs() would revert to whatever real process.env.SESSION_SECRET already is
-    // (e.g. loaded from the real .env by a `dotenv/config` import elsewhere in this worker) —
-    // deleting outright is the only way to deterministically test "unset" regardless of test
-    // execution order.
+    const token = createSessionToken(UID);
     const original = process.env.SESSION_SECRET;
     delete process.env.SESSION_SECRET;
     try {

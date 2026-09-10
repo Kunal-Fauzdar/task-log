@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { skillInputSchema } from "@/lib/validation/skill";
 import { createSkill, deleteSkill, updateSkill } from "@/lib/data/skill";
 import { Prisma } from "../../generated/prisma/client.ts";
@@ -19,6 +20,7 @@ export async function createSkillAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const parsed = parseSkillForm(formData);
   if (!parsed.success) {
     return {
@@ -30,6 +32,7 @@ export async function createSkillAction(
 
   try {
     await createSkill({
+      userId: user.id,
       name: parsed.data.name,
       proficiencyPercentage: parsed.data.proficiencyPercentage,
       notes: parsed.data.notes || undefined,
@@ -53,6 +56,7 @@ export async function updateSkillAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const id = String(formData.get("id") ?? "");
 
   const parsed = parseSkillForm(formData);
@@ -65,7 +69,7 @@ export async function updateSkillAction(
   }
 
   try {
-    await updateSkill(id, {
+    await updateSkill(user.id, id, {
       name: parsed.data.name,
       proficiencyPercentage: parsed.data.proficiencyPercentage,
       notes: parsed.data.notes || undefined,
@@ -86,6 +90,7 @@ export async function updateSkillAction(
 }
 
 export async function deleteSkillAction(id: string): Promise<void> {
-  await deleteSkill(id);
+  const user = await requireUser();
+  await deleteSkill(user.id, id);
   revalidatePath("/skills");
 }

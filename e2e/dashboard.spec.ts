@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
+import { e2eUserId } from "./helpers";
 
 const TEST_DATE = new Date("2099-06-10");
 // Two dates inside the last 12 months (the month dropdown's range) but not the current month, so
@@ -11,7 +12,10 @@ const PICKER_MONTH_DATE_2 = new Date("2026-06-12");
 
 test.afterEach(async () => {
   await prisma.workDay.deleteMany({
-    where: { date: { in: [TEST_DATE, PICKER_MONTH_DATE, PICKER_MONTH_DATE_2] } },
+    where: {
+      userId: await e2eUserId(),
+      date: { in: [TEST_DATE, PICKER_MONTH_DATE, PICKER_MONTH_DATE_2] },
+    },
   });
 });
 
@@ -31,6 +35,7 @@ test("dashboard shows today's work, statistics, and recent work days", async ({ 
 test("a completed work day appears in Recent Work Days and links to its Work Log", async ({ page }) => {
   const workDay = await prisma.workDay.create({
     data: {
+      userId: await e2eUserId(),
       date: TEST_DATE,
       checkIn: new Date(Date.UTC(2099, 5, 10, 9, 0, 0)),
       checkOut: new Date(Date.UTC(2099, 5, 10, 17, 0, 0)),
@@ -52,15 +57,18 @@ test("a completed work day appears in Recent Work Days and links to its Work Log
 });
 
 test("the month dropdown re-computes Total hours on every pick", async ({ page }) => {
+  const userId = await e2eUserId();
   await prisma.workDay.createMany({
     data: [
       {
+        userId,
         date: PICKER_MONTH_DATE,
         checkIn: new Date(Date.UTC(2026, 6, 15, 9, 0, 0)),
         checkOut: new Date(Date.UTC(2026, 6, 15, 15, 0, 0)), // 6h net
         status: "COMPLETED",
       },
       {
+        userId,
         date: PICKER_MONTH_DATE_2,
         checkIn: new Date(Date.UTC(2026, 5, 12, 9, 0, 0)),
         checkOut: new Date(Date.UTC(2026, 5, 12, 12, 0, 0)), // 3h net

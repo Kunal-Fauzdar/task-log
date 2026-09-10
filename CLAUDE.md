@@ -5,14 +5,18 @@ any structural change. Keep it updated at the end of every phase.
 
 ## 1. Purpose
 
-A personal productivity app for **one user** (Kavya) to:
+A personal productivity app. Each registered **user** has their own private data to:
 - Log daily work: check-in/out, breaks, and per-task entries (Task ID, description, duration, link).
 - Track skill proficiency (SkillMap) across three bands: <30%, 30–70%, >70%.
 - Export logs to an `.xlsx` file matching a required submission format (exact columns, merged
   work-day cells, holiday rows, hyperlinks).
 
-This is **not** a multi-tenant SaaS product. No org/team features. Optimize for daily,
-repeated, low-friction use over configurability.
+**Multi-user since Phase 12** (was single-user through Phase 11 — Kavya's account is the
+migration's "owner" holding all pre-Phase-12 data). Open self-service registration,
+email + password login, and **per-user data isolation**: every domain row is owned by one
+`User` via `userId`, and every query / Server Action is scoped to the logged-in user. Still not
+a team/org product — no roles, no admin screen, no sharing; accounts are just separate personal
+instances. Optimize for daily, repeated, low-friction use over configurability.
 
 ## 2. Tech Stack (decided in Phase 0)
 
@@ -755,44 +759,47 @@ recommended option:
   available on this machine — decided in Phase 0). `.env` holds
   `DATABASE_URL`/`DATABASE_URL_UNPOOLED` and is gitignored; `.env.example` holds placeholders
   only.
-- **Single-user, no multi-tenancy in the schema.** No `userId` foreign keys on domain tables.
-  Auth (Phase 10) gates the whole app, not per-user rows — no `User`/`Session` table exists or is
-  planned.
-- **Auth (Phase 10): a single shared password, not an account system.** The spec (§30/§38) never
-  commits to building auth at all — it's explicitly optional ("if authentication is added...").
-  Confirmed with the user before implementing (this app deploys to a public Vercel URL, so *some*
-  gate matters): one shared password, bcrypt-hashed (`bcryptjs`, cost 12) and stored as
-  `AUTH_PASSWORD_HASH`, no user table, no OAuth/next-auth/iron-session dependency — proportionate
-  to a single-user tool with exactly one credential and no multi-provider need (same "no
-  state-management library added by default" reasoning as §2). Sessions are a custom
-  stateless-signed-cookie scheme (`src/lib/auth/session.ts`): `"<base64url payload>.<HMAC-SHA256
-  signature>"`, verified with `node:crypto`'s `timingSafeEqual`, `SESSION_SECRET`-keyed, 30-day
-  expiry, no server-side session store to invalidate (rotating `SESSION_SECRET` is the only way
-  to force-invalidate every session at once). `src/proxy.ts` gates every route except `/login`
-  and `/api/health`; unauthenticated page requests redirect to `/login?from=<path>`, unauthenticated
-  `/api/*` requests get a 401 JSON body instead (a redirect would silently corrupt a binary/JSON
-  response body). Login/logout are Server Actions (`src/lib/actions/auth-actions.ts`), not Route
-  Handlers — no file I/O involved, matches the established split (§3/§8).
-- **`AUTH_PASSWORD_HASH` is stored base64-encoded, never as the raw `"$2b$12$..."` bcrypt hash
-  string — a real bug found and fixed in Phase 10, not a stylistic choice.** Next.js's own `.env`
-  loader (`@next/env`, built on `dotenv-expand`) treats `$` as shell-style variable-expansion
-  syntax. A raw bcrypt hash's `$2b$12$...` segments got silently parsed as expansion tokens and
-  stripped to near-nothing (`$2b$12$y/ZOM...` became `/ZOM...` — the login form always failed with
-  "Incorrect password," confirmed correct behind the scenes via a standalone script using plain
-  `dotenv/config`, only broken through Next's actual env loader). Neither `$$`-escaping nor
-  single-quoting reliably prevented it in the installed `@next/env`/`dotenv-expand` version —
-  tested both directly against `@next/env`'s `loadEnvConfig`, both still corrupted the value.
-  Base64 has no `$` in its alphabet, sidestepping the whole issue regardless of dotenv-expand's
-  exact escaping behavior. `scripts/hash-password.ts` outputs the value pre-encoded;
-  `src/lib/auth/password.ts` always base64-decodes before `bcrypt.compare`. **This means Vercel
-  env vars need the same base64-encoded value too, not the raw hash** — Vercel's dashboard
-  doesn't run values through dotenv-expand, so a raw hash pasted there wouldn't get mangled the
-  same way, but the app would still try to base64-decode it and fail closed (safe, but broken
-  until fixed) — always use the script's output verbatim, on every environment. See
-  DEPLOYMENT.md §6 step 5 for the full explanation aimed at the user.
+- **Multi-user with per-user data isolation (Phase 12) — replaced the single-user model.** A
+  `User` table (`email @unique`, `name`, `passwordHash`); every domain table (`WorkDay`, `Skill`,
+  `Project`, `Holiday`, `AppSettings`) has a `userId String` FK, `onDelete: Cascade`. `Task` has
+  **no** `userId` column — it's scoped through its `workDay` relation
+  (`where: { workDay: { userId } }`). Uniqueness that was global is now per-user:
+  `@@unique([userId, date])` on WorkDay/Holiday, `@@unique([userId, name])` on Skill/Project,
+  `AppSettings.userId @unique` (the old `id = "singleton"` row is gone). **Every function in
+  `src/lib/data/*` takes a leading `userId` and scopes its query; every Server Action and page
+  calls `requireUser()` (`src/lib/auth/current-user.ts`) first and threads `user.id` through.**
+  By-id mutations enforce ownership with a `findFirst({ where: { id, userId } })` (or
+  `{ id, workDay: { userId } }`) guard and return `null` when it isn't the caller's — the same
+  contract callers already handle from `tolerateAlreadyDeleted`. **Any new data-layer function or
+  action must follow this: scope reads by `userId`, guard by-id mutations, never trust a
+  client-supplied id** (e.g. `createTaskAction` re-resolves the WorkDay from `user.id` + date
+  rather than trusting the form's `workDayId`). The migration `20260910114500_add_user_management`
+  created an "owner" account (`kavya.b.analyst@gmail.com`, sentinel `passwordHash`
+  `__RESET_REQUIRED__`) and backfilled all pre-Phase-12 rows to it — **run
+  `npx tsx scripts/set-password.ts kavya.b.analyst@gmail.com '<pw>'` once** to give it a real
+  password (that email can't self-register).
+- **Auth: per-user accounts (Phase 12), was a single shared password (Phase 10).** Open
+  registration, email + password + display name. `src/lib/auth/password.ts` is now
+  `hashPassword(plain)` / `verifyPassword(plain, hash)` — plain `bcryptjs` cost 12, **hash lives
+  in `User.passwordHash` (DB), not an env var**, so the old `AUTH_PASSWORD_HASH` base64 dance
+  (Next's `@next/env`/dotenv-expand mangles `$` in a raw bcrypt hash) is gone entirely. Sessions
+  are still the custom stateless signed cookie (`src/lib/auth/session.ts`):
+  `"<base64url payload>.<HMAC-SHA256 sig>"`, `SESSION_SECRET`-keyed, `timingSafeEqual`, 30-day
+  expiry — the payload now carries `{ uid, iat }` and `isValidSessionToken`/`readSessionToken`
+  reject a token with no `uid` (so pre-Phase-12 cookies fail closed). `getCurrentUser()` is a
+  React `cache()`-wrapped `prisma.user.findUnique` by `uid`; `requireUser()` redirects to
+  `/login` if absent. `src/proxy.ts` gates every route except `/login`, `/register`,
+  `/api/health` (unauth page → redirect to `/login?from=…`, unauth `/api/*` → 401 JSON — the two
+  API route handlers re-check `getCurrentUser()` themselves to get the id). `registerAction` /
+  `loginAction` / `logoutAction` / `changePasswordAction` / `updateNameAction` in
+  `auth-actions.ts`. UI: `/register` page, `/login` gained an email field, `/account` page
+  (change name / password), the sidebar footer shows the logged-in user linking to `/account`.
+  `layout.tsx` is `async`, fetches `getCurrentUser()`, passes it to `AppShell` → `Header` — so
+  **every route is now `ƒ` (dynamic)**, which also permanently retires the Phase-11
+  static-snapshot staleness class of bug.
 - **No per-row timezone handling.** All check-in/out/break/task timestamps are stored as
-  naive local wall-clock time tied to `WorkDay.date`. This is a single-user, single-timezone
-  tool; documented here so nobody "fixes" it into UTC conversion later.
+  naive local wall-clock time tied to `WorkDay.date`. Single-timezone tool (all of a user's own
+  days are in their timezone); documented here so nobody "fixes" it into UTC conversion later.
 - **`Holiday` (reference calendar) vs `WorkDay.dayType` (actual recorded status) are
   different things.** `Holiday` is a small reference table of known dates (e.g. national/
   company holidays) used to auto-suggest status when a date is selected. `WorkDay.dayType`
@@ -933,19 +940,32 @@ recommended option:
 ## 4. Data Model
 
 ```
-WorkDay (1) ──< Task (many) >── TaskSkill >── Skill (many)
-                    │                              │
-              Project (0..1)                  SkillHistory (many)
-
-Holiday  — standalone reference table, not FK-linked to WorkDay
+User (1) ──< WorkDay ──< Task >── TaskSkill >── Skill (many) >──< User (1)
+  │             │           │                       │
+  │       (userId FK)  Project (0..1) >──< User    SkillHistory (many)
+  └──< Holiday, AppSettings   (every domain row carries a userId, onDelete: Cascade)
 ```
 
+Every domain row is owned by one `User` via `userId` (Phase 12). `Task` is the exception — it
+has no `userId` column; ownership is "its WorkDay belongs to the user". Uniqueness that used to
+be global is per-user: `@@unique([userId, date])` (WorkDay, Holiday), `@@unique([userId, name])`
+(Skill, Project).
+
+### User
+`id, email (unique), name (display name), passwordHash (bcrypt, cost 12), createdAt, updatedAt`
+
+Open registration; email is the login identifier. `onDelete: Cascade` from every domain table,
+so deleting a user removes all their data. The migration seeded an "owner" account holding all
+pre-Phase-12 rows — see §3.
+
 ### WorkDay
-`id, date (unique, date-only), checkIn (nullable), checkOut (nullable), breakSeconds (int,
+`id, userId (FK, cascade), date, checkIn (nullable), checkOut (nullable), breakSeconds (int,
 default 0), breakStartedAt (nullable — set while "on break"), status (enum:
 NOT_STARTED | IN_PROGRESS | COMPLETED | HOLIDAY | LEAVE), dayType (enum:
 WORKING | HOLIDAY | LEAVE, default WORKING), dayNote (nullable — reason/label for a
 holiday/leave day, was `holidayReason`), notes (nullable), createdAt, updatedAt`
+
+`@@unique([userId, date])` — one row per date per user.
 
 `dayType` is the user's classification of the day (single mutually-exclusive selector in the
 `/worklog` header); `status` is still derived (`deriveWorkDayStatus`) — HOLIDAY/LEAVE dayType
@@ -953,7 +973,8 @@ force the matching status, otherwise checkIn/checkOut drive it. Weekends are NOT
 — they're derived from `AppSettings.workingDays` at read time (Excel "WEEKLY OFF" rows).
 
 ### Task
-`id, workDayId (FK, cascade delete), taskId (string, e.g. "T-1039", validated format,
+`id, workDayId (FK, cascade delete — ownership is via the WorkDay's userId, no Task.userId
+column), taskId (string, e.g. "T-1039", validated format,
 not globally unique — same Task ID can recur across days), description, durationSeconds (int),
 link (nullable, validated URL), projectId (FK, nullable, onDelete: SetNull — see Project),
 order (int, for manual reordering), timerStatus (enum:
@@ -964,8 +985,9 @@ Task duration accumulates: `durationSeconds` holds all *completed* elapsed time;
 folds that delta into `durationSeconds` and clears `timerStartedAt`.
 
 ### Skill
-`id, name (unique), category (enum: LESS_THAN_30 | BETWEEN_30_70 | MORE_THAN_70, derived —
-never set directly), proficiencyPercentage (int, 0–100), notes (nullable), createdAt, updatedAt`
+`id, userId (FK, cascade), name (unique per user), category (enum:
+LESS_THAN_30 | BETWEEN_30_70 | MORE_THAN_70, derived — never set directly),
+proficiencyPercentage (int, 0–100), notes (nullable), createdAt, updatedAt`
 
 Category boundaries (documented per spec §21): `0–29 → LESS_THAN_30`,
 `30–70 → BETWEEN_30_70`, `71–100 → MORE_THAN_70`. Computed server-side on every write, not
@@ -985,24 +1007,29 @@ these are just seed defaults, never hardcoded UI text.
 `taskId, skillId` — composite PK. Optional association; a task may have zero skills.
 
 ### Project
-`id, name (unique), createdAt, updatedAt`
+`id, userId (FK, cascade), name (unique per user), createdAt, updatedAt`
 
-Global label a Task can be filed under (`Task.projectId`, nullable). Not per-WorkDay — a
-project spans every day. `onDelete: SetNull`: removing a project unassigns its tasks (they stay
+Per-user label a Task can be filed under (`Task.projectId`, nullable). Not per-WorkDay — a
+project spans all of that user's days. `onDelete: SetNull`: removing a project unassigns its tasks (they stay
 in their work days, shown under "No project"), never deletes them. The Excel export can filter
 to one project (`?projectId=`) to produce a per-project timesheet in the same layout; days with
 no task for that project export as a timings-only row. No dedicated "calendar state" or
 per-project WorkDay concept — grouping is derived at read time via `groupTasksByProject`
 (`src/lib/domain/project.ts`).
 
-### Holiday (reference calendar, not per-user data)
-`id, date (unique, date-only), name, createdAt, updatedAt`
+### Holiday (per-user reference calendar)
+`id, userId (FK, cascade), date (unique per user), name, createdAt, updatedAt`
 
-### AppSettings (whole-app config singleton, not per-user data)
-`id (fixed "singleton"), workingDays (Int[], default [1,2,3,4,5], Sun=0..Sat=6), updatedAt`
+No UI builds on this yet — it exists for a future "known holidays" feature and is covered by
+integration tests.
 
-One row, always. Read via an `upsert` on the fixed id (`src/lib/data/settings.ts`) so it never
-needs a seed step — the default materializes on first read. Drives which dates
+### AppSettings (per-user config, one row per user)
+`id, userId (unique, FK, cascade), workingDays (Int[], default [1,2,3,4,5], Sun=0..Sat=6),
+updatedAt`
+
+One row per user, created lazily. Read via an `upsert` on `userId` (`src/lib/data/settings.ts`)
+so it never needs a seed step — the default materializes on first read (was a single
+`id = "singleton"` row before Phase 12). Drives which dates
 `fillMissingWorkingDays` (`src/lib/domain/workday.ts`) synthesizes a blank export row for, so a
 month/range export always has one row per expected working day, not just the ones that got a
 real `WorkDay` row from being visited.
@@ -1096,7 +1123,7 @@ task-log/
 ├── e2e/                          # Playwright specs
 ├── scripts/
 │   ├── verify-db.ts
-│   └── hash-password.ts          # Phase 10 — generates AUTH_PASSWORD_HASH/SESSION_SECRET
+│   └── set-password.ts           # Phase 12 — sets a User's bcrypt password directly in the DB
 ├── .env.example
 └── (config: package.json, tsconfig.json, tailwind config, vitest.config.ts, playwright.config.ts)
 ```
@@ -1143,6 +1170,7 @@ task-log/
 | 9 — Excel Import | ✅ Done — upload, header/row validation, preview, confirm-before-save, duplicate detection; 206 Vitest tests + 16 Playwright e2e tests, all passing |
 | 10 — Security & Hardening | ✅ Done — single-password auth gate, DB CHECK constraints, security/error-handling/validation review, a11y/responsive spot-checks; 223 Vitest tests + 21 Playwright e2e tests, all passing |
 | 11 — Final QA | ✅ Done — full manual QA pass across all 7 checklist categories, 2 real bugs found and fixed, delete-WorkDay feature added, unused dependency removed; 224 Vitest tests + 22 Playwright e2e tests, all passing |
+| 12 — Multi-user | ✅ Done — `User` table + registration/login/logout/account pages, per-user data isolation (`userId` on every domain table, every query + action scoped), migration backfills pre-existing data to an owner account; 300 Vitest tests + 25 Playwright e2e tests, all passing |
 
 ## 11. Instructions for Future Claude Sessions
 
@@ -1477,6 +1505,54 @@ task-log/
     across every tracked doc/config file — clean, only ever in the gitignored `.env`. 224 Vitest
     (1 new: `deleteWorkDay` P2025-tolerance) + 22 Playwright (1 new: the delete-work-day flow)
     total, all passing; `next build` clean.
+- Phase 12 is complete: **multi-user** (user request: "add multiple user functionality …
+  registration and login"). Reverses the Phase-0 single-user decision. Four forks settled with
+  the user via `AskUserQuestion`, all taking the recommended option: **per-user private data**,
+  **open self-service registration**, **email + password + display name**, **essentials only**
+  (register / login / logout / change own password — no admin screen, no roles).
+  - **Schema + migration** (`20260910114500_add_user_management`, applied via
+    `prisma migrate deploy` after `--create-only` was blocked by the non-interactive
+    data-loss prompt): new `User` table; `userId` FK (`onDelete: Cascade`) on `WorkDay`,
+    `Skill`, `Project`, `Holiday`, `AppSettings`; `Task` scoped through its WorkDay (no column);
+    global uniques → per-user composites; `AppSettings` singleton → one row per user. The
+    hand-edited `migration.sql` seeds an owner account (`kavya.b.analyst@gmail.com`, sentinel
+    `passwordHash`) and backfills all 32 work days / 25 skills / 3 projects to it before setting
+    `userId NOT NULL`. **Run `npx tsx scripts/set-password.ts kavya.b.analyst@gmail.com '<pw>'`
+    once** — that email can't self-register.
+  - **Auth core**: `password.ts` → DB-stored bcrypt hash, no more `AUTH_PASSWORD_HASH`/base64;
+    `session.ts` payload gains `uid` (uid-less tokens now rejected); new
+    `src/lib/auth/current-user.ts` (`getCurrentUser` = React `cache()` + `prisma.user`,
+    `requireUser` redirects); `src/lib/data/user.ts`; `src/lib/validation/auth.ts`;
+    `auth-actions.ts` rewritten (`registerAction`/`loginAction`/`logoutAction`/
+    `changePasswordAction`/`updateNameAction`). `/register` added to `proxy.ts` public paths.
+  - **Data layer / actions / pages / API**: the mechanical sweep in §3 — every `src/lib/data/*`
+    function takes a leading `userId` and scopes its query; by-id mutations guard ownership with
+    `findFirst({ where: { id, userId } })` (or `{ id, workDay: { userId } }`) and return `null`
+    when not the caller's; every action calls `requireUser()` first; every data page calls it
+    and threads `user.id`; both API routes re-check `getCurrentUser()` for a 401 + the id.
+    `createTaskAction` re-resolves the WorkDay from `user.id` + date (never trusts the form's
+    `workDayId`).
+  - **UI**: `/register` + `RegisterForm`; `/login` gained an email field, error copy
+    "Incorrect email or password."; `/account` + two `useActionState` forms (name, password);
+    `layout.tsx` is `async` and passes `getCurrentUser()` to `AppShell` → `Header`, whose
+    sidebar/drawer footer shows the logged-in user linking to `/account`. **Every route is now
+    `ƒ` (dynamic)** — the whole static-snapshot staleness class from Phase 11 is retired.
+  - **Tests**: `src/test/helpers/user.ts` (`createTestUser`/`deleteTestUser`, cascade cleanup);
+    every integration file threads a per-file throwaway user; new `user.test.ts` (isolation,
+    cascade, dup-email) + per-user isolation assertions sprinkled through the others;
+    `validation-auth.test.ts`; `auth-password`/`auth-session` unit tests rewritten. E2E:
+    `e2e/helpers.ts` (`getOrCreateE2EUser`, `ensureE2ESkills` — a fresh e2e account has no
+    seeded skills), `auth.setup.ts` logs in with email+password, `auth.spec.ts` covers
+    registration; every seeding spec adds `userId` and scopes its cleanup to the e2e user.
+  - **Verification**: `tsc`, ESLint, `npx next build` clean; `vitest run` **300 passed** (36
+    files); `npx playwright test --workers=1` **25 passed**. One false-alarm e2e failure first
+    time — Playwright's `reuseExistingServer` had latched a stale `next dev` from before the
+    Prisma regen (served un-gated `/api/export` → 200, old `/login`); killing it + `rm -rf .next`
+    → clean 25/25. `scripts/hash-password.ts` deleted; `package.json` scripts `auth:hash-password`
+    → `auth:set-password` + `auth:gen-secret` + `db:seed`; `.env.example` / `.env` updated
+    (`AUTH_PASSWORD_HASH` gone, `E2E_TEST_EMAIL` added); DEPLOYMENT.md §6 step 5 + troubleshooting
+    rows rewritten for the new model (only `SESSION_SECRET` in Vercel; first user registers in-app
+    or via `set-password.ts`).
 - Update the Phase Progress table and this file at the end of every phase.
 - **Next.js 16 has a built-in "agent rules" feature that appends a block to `CLAUDE.md` on
   every `next dev` run** (`node_modules/next/dist/server/lib/generate-agent-files.js`). We

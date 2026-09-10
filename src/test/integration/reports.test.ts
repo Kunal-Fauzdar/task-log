@@ -1,11 +1,10 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
 import { createWorkDay, listWorkDays } from "@/lib/data/workday";
-import { createTask } from "@/lib/data/task";
-import { createSkill, deleteSkill } from "@/lib/data/skill";
-import { setTaskSkills } from "@/lib/data/task";
+import { createTask, setTaskSkills } from "@/lib/data/task";
+import { createSkill } from "@/lib/data/skill";
 import { getTasksInRange } from "@/lib/data/reports";
 import {
   buildMonthlySummary,
@@ -14,22 +13,32 @@ import {
   groupTasksBySkill,
   groupTasksByTaskId,
 } from "@/lib/domain/reports";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_DATE_A = new Date("2099-12-01");
 const TEST_DATE_B = new Date("2099-12-02");
 const SKILL_NAME = "Reports Test Skill 2099";
 
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
 afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: { in: [TEST_DATE_A, TEST_DATE_B] } } });
-  const skill = await prisma.skill.findUnique({ where: { name: SKILL_NAME } });
-  if (skill) await deleteSkill(skill.id);
+  await prisma.workDay.deleteMany({ where: { userId, date: { in: [TEST_DATE_A, TEST_DATE_B] } } });
+  await prisma.skill.deleteMany({ where: { userId, name: SKILL_NAME } });
 });
 
 describe("getTasksInRange + reports domain — real database data end to end", () => {
   it("aggregates work days, tasks, and skills across a real range", async () => {
-    const skill = await createSkill({ name: SKILL_NAME, proficiencyPercentage: 50 });
+    const skill = await createSkill({ userId, name: SKILL_NAME, proficiencyPercentage: 50 });
 
-    const workDayA = await createWorkDay({ date: TEST_DATE_A });
+    const workDayA = await createWorkDay({ userId, date: TEST_DATE_A });
     await prisma.workDay.update({
       where: { id: workDayA.id },
       data: {
@@ -44,7 +53,7 @@ describe("getTasksInRange + reports domain — real database data end to end", (
       description: "First task",
       durationSeconds: 3600,
     });
-    await setTaskSkills(taskA1.id, [skill.id]);
+    await setTaskSkills(userId, taskA1.id, [skill.id]);
     await createTask({
       workDayId: workDayA.id,
       taskId: "T-3002",
@@ -52,7 +61,7 @@ describe("getTasksInRange + reports domain — real database data end to end", (
       durationSeconds: 1800,
     });
 
-    const workDayB = await createWorkDay({ date: TEST_DATE_B });
+    const workDayB = await createWorkDay({ userId, date: TEST_DATE_B });
     await prisma.workDay.update({
       where: { id: workDayB.id },
       data: {
@@ -67,10 +76,13 @@ describe("getTasksInRange + reports domain — real database data end to end", (
       description: "Recurring Task ID on a different day",
       durationSeconds: 900,
     });
-    await setTaskSkills(taskB1.id, [skill.id]);
+    await setTaskSkills(userId, taskB1.id, [skill.id]);
 
     const range = { from: TEST_DATE_A, to: TEST_DATE_B };
-    const [workDays, tasks] = await Promise.all([listWorkDays(range), getTasksInRange(range)]);
+    const [workDays, tasks] = await Promise.all([
+      listWorkDays(userId, range),
+      getTasksInRange(userId, range),
+    ]);
 
     expect(tasks).toHaveLength(3);
 
@@ -99,5 +111,18 @@ describe("getTasksInRange + reports domain — real database data end to end", (
     expect(monthly).toHaveLength(1);
     expect(monthly[0].month).toBe("2099-12");
     expect(monthly[0].taskCount).toBe(3);
+  });
+
+  it("getTasksInRange never returns another user's tasks", async () => {
+    const other = await createTestUser();
+    try {
+      const otherDay = await createWorkDay({ userId: other.id, date: TEST_DATE_A });
+      await createTask({ workDayId: otherDay.id, taskId: "T-X", description: "Theirs" });
+
+      const tasks = await getTasksInRange(userId, { from: TEST_DATE_A, to: TEST_DATE_B });
+      expect(tasks).toEqual([]);
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 });

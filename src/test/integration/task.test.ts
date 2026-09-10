@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
 import { createWorkDay } from "@/lib/data/workday";
@@ -14,20 +14,31 @@ import {
   setTaskSkills,
   updateTask,
 } from "@/lib/data/task";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_DATE = new Date("2099-03-01");
 const TEST_SKILL_NAME_A = "__test__ TaskSkill A";
 const TEST_SKILL_NAME_B = "__test__ TaskSkill B";
 const TEST_PROJECT_NAME = "__test__ Task Project";
 
-afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
-  await prisma.skill.deleteMany({ where: { name: { in: [TEST_SKILL_NAME_A, TEST_SKILL_NAME_B] } } });
-  await prisma.project.deleteMany({ where: { name: TEST_PROJECT_NAME } });
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
 });
 
-async function seedWorkDay() {
-  return createWorkDay({ date: TEST_DATE });
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
+afterEach(async () => {
+  await prisma.workDay.deleteMany({ where: { userId, date: TEST_DATE } });
+  await prisma.skill.deleteMany({ where: { userId, name: { in: [TEST_SKILL_NAME_A, TEST_SKILL_NAME_B] } } });
+  await prisma.project.deleteMany({ where: { userId, name: TEST_PROJECT_NAME } });
+});
+
+function seedWorkDay() {
+  return createWorkDay({ userId, date: TEST_DATE });
 }
 
 describe("Task CRUD", () => {
@@ -44,7 +55,7 @@ describe("Task CRUD", () => {
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "Draft" });
 
-    const updated = await updateTask(task.id, { description: "Final", durationSeconds: 1800 });
+    const updated = await updateTask(userId, task.id, { description: "Final", durationSeconds: 1800 });
 
     if (!updated) throw new Error("expected updateTask to return the updated task");
     expect(updated.description).toBe("Final");
@@ -55,9 +66,9 @@ describe("Task CRUD", () => {
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "Temp" });
 
-    await deleteTask(task.id);
+    await deleteTask(userId, task.id);
 
-    const remaining = await getTasksByWorkDay(workDay.id);
+    const remaining = await getTasksByWorkDay(userId, workDay.id);
     expect(remaining).toHaveLength(0);
   });
 
@@ -71,7 +82,7 @@ describe("Task CRUD", () => {
       link: "https://example.com",
     });
 
-    const copy = await duplicateTask(task.id);
+    const copy = await duplicateTask(userId, task.id);
 
     if (!copy) throw new Error("expected duplicateTask to return the new task");
     expect(copy.id).not.toBe(task.id);
@@ -83,7 +94,7 @@ describe("Task CRUD", () => {
 
   it("stores a task's projectId and carries it through duplicate/update", async () => {
     const workDay = await seedWorkDay();
-    const project = await createProject({ name: TEST_PROJECT_NAME });
+    const project = await createProject({ userId, name: TEST_PROJECT_NAME });
 
     const task = await createTask({
       workDayId: workDay.id,
@@ -93,26 +104,38 @@ describe("Task CRUD", () => {
     });
     expect(task.projectId).toBe(project.id);
 
-    const copy = await duplicateTask(task.id);
+    const copy = await duplicateTask(userId, task.id);
     expect(copy?.projectId).toBe(project.id);
 
-    const cleared = await updateTask(task.id, { projectId: null });
+    const cleared = await updateTask(userId, task.id, { projectId: null });
     expect(cleared?.projectId).toBeNull();
   });
 
   it("mutating a task that no longer exists returns null instead of throwing", async () => {
-    // Regression test: found via Playwright e2e runs — a mutation racing against that same
-    // task being deleted concurrently used to crash with an unhandled Prisma P2025. See
-    // tolerateAlreadyDeleted in src/lib/data/task.ts.
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "Temp" });
-    await deleteTask(task.id);
+    await deleteTask(userId, task.id);
 
-    await expect(
-      updateTask(task.id, { description: "Too late" }),
-    ).resolves.toBeNull();
-    await expect(deleteTask(task.id)).resolves.toBeNull();
-    await expect(duplicateTask(task.id)).resolves.toBeNull();
+    await expect(updateTask(userId, task.id, { description: "Too late" })).resolves.toBeNull();
+    await expect(deleteTask(userId, task.id)).resolves.toBeNull();
+    await expect(duplicateTask(userId, task.id)).resolves.toBeNull();
+  });
+
+  it("does not mutate another user's task", async () => {
+    const other = await createTestUser();
+    try {
+      const otherDay = await createWorkDay({ userId: other.id, date: TEST_DATE });
+      const otherTask = await createTask({
+        workDayId: otherDay.id,
+        taskId: "T-X",
+        description: "Theirs",
+      });
+      await expect(updateTask(userId, otherTask.id, { description: "hijack" })).resolves.toBeNull();
+      await expect(deleteTask(userId, otherTask.id)).resolves.toBeNull();
+      expect(await prisma.task.findUnique({ where: { id: otherTask.id } })).not.toBeNull();
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 
   it("reorders tasks according to the given id sequence", async () => {
@@ -121,9 +144,9 @@ describe("Task CRUD", () => {
     const t2 = await createTask({ workDayId: workDay.id, taskId: "T-2", description: "B" });
     const t3 = await createTask({ workDayId: workDay.id, taskId: "T-3", description: "C" });
 
-    await reorderTasks([t3.id, t1.id, t2.id]);
+    await reorderTasks(userId, [t3.id, t1.id, t2.id]);
 
-    const ordered = await getTasksByWorkDay(workDay.id);
+    const ordered = await getTasksByWorkDay(userId, workDay.id);
     expect(ordered.map((t) => t.id)).toEqual([t3.id, t1.id, t2.id]);
   });
 });
@@ -132,10 +155,10 @@ describe("setTaskSkills", () => {
   it("associates skills with a task", async () => {
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "A" });
-    const skillA = await createSkill({ name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
-    const skillB = await createSkill({ name: TEST_SKILL_NAME_B, proficiencyPercentage: 60 });
+    const skillA = await createSkill({ userId, name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
+    const skillB = await createSkill({ userId, name: TEST_SKILL_NAME_B, proficiencyPercentage: 60 });
 
-    await setTaskSkills(task.id, [skillA.id, skillB.id]);
+    await setTaskSkills(userId, task.id, [skillA.id, skillB.id]);
 
     const links = await prisma.taskSkill.findMany({ where: { taskId: task.id } });
     expect(links.map((l) => l.skillId).sort()).toEqual([skillA.id, skillB.id].sort());
@@ -144,11 +167,11 @@ describe("setTaskSkills", () => {
   it("replaces the association set rather than appending to it", async () => {
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "A" });
-    const skillA = await createSkill({ name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
-    const skillB = await createSkill({ name: TEST_SKILL_NAME_B, proficiencyPercentage: 60 });
+    const skillA = await createSkill({ userId, name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
+    const skillB = await createSkill({ userId, name: TEST_SKILL_NAME_B, proficiencyPercentage: 60 });
 
-    await setTaskSkills(task.id, [skillA.id]);
-    await setTaskSkills(task.id, [skillB.id]);
+    await setTaskSkills(userId, task.id, [skillA.id]);
+    await setTaskSkills(userId, task.id, [skillB.id]);
 
     const links = await prisma.taskSkill.findMany({ where: { taskId: task.id } });
     expect(links.map((l) => l.skillId)).toEqual([skillB.id]);
@@ -157,20 +180,32 @@ describe("setTaskSkills", () => {
   it("an empty list clears all associations", async () => {
     const workDay = await seedWorkDay();
     const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "A" });
-    const skillA = await createSkill({ name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
+    const skillA = await createSkill({ userId, name: TEST_SKILL_NAME_A, proficiencyPercentage: 50 });
 
-    await setTaskSkills(task.id, [skillA.id]);
-    await setTaskSkills(task.id, []);
+    await setTaskSkills(userId, task.id, [skillA.id]);
+    await setTaskSkills(userId, task.id, []);
 
     const links = await prisma.taskSkill.findMany({ where: { taskId: task.id } });
     expect(links).toHaveLength(0);
   });
 
-  it("a task can have zero skills without setTaskSkills ever being called (optional association)", async () => {
-    const workDay = await seedWorkDay();
-    const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "A" });
+  it("ignores skill ids that belong to another user", async () => {
+    const other = await createTestUser();
+    try {
+      const workDay = await seedWorkDay();
+      const task = await createTask({ workDayId: workDay.id, taskId: "T-1", description: "A" });
+      const foreignSkill = await createSkill({
+        userId: other.id,
+        name: TEST_SKILL_NAME_A,
+        proficiencyPercentage: 50,
+      });
 
-    const links = await prisma.taskSkill.findMany({ where: { taskId: task.id } });
-    expect(links).toHaveLength(0);
+      await setTaskSkills(userId, task.id, [foreignSkill.id]);
+
+      const links = await prisma.taskSkill.findMany({ where: { taskId: task.id } });
+      expect(links).toHaveLength(0);
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 });

@@ -2,13 +2,14 @@ import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
 import { formatDisplayDate, parseDateOnly } from "../src/lib/domain/date";
+import { e2eUserId } from "./helpers";
 
 // A clearly-fake far-future date so this test can never collide with real logged work.
 const TEST_DATE_PARAM = "2099-05-15";
 const TEST_DATE = parseDateOnly(TEST_DATE_PARAM);
 
 test.afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
+  await prisma.workDay.deleteMany({ where: { userId: await e2eUserId(), date: TEST_DATE } });
 });
 
 test("work log day: add, edit, and delete a task; toggle holiday", async ({ page }) => {
@@ -86,6 +87,7 @@ test("deleting a work day removes it and its tasks, and redirects to the dashboa
 }) => {
   const deleteTestDateParam = "2099-05-16";
   const deleteTestDate = parseDateOnly(deleteTestDateParam);
+  const userId = await e2eUserId();
 
   try {
     await page.goto(`/worklog/${deleteTestDateParam}`);
@@ -102,9 +104,11 @@ test("deleting a work day removes it and its tasks, and redirects to the dashboa
 
     await expect(page).toHaveURL(/\/dashboard$/);
 
-    const workDay = await prisma.workDay.findUnique({ where: { date: deleteTestDate } });
+    const workDay = await prisma.workDay.findUnique({
+      where: { userId_date: { userId, date: deleteTestDate } },
+    });
     expect(workDay).toBeNull();
   } finally {
-    await prisma.workDay.deleteMany({ where: { date: deleteTestDate } });
+    await prisma.workDay.deleteMany({ where: { userId, date: deleteTestDate } });
   }
 });

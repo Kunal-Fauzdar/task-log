@@ -1,12 +1,14 @@
 import { FileDown, Info } from "lucide-react";
 
+import { requireUser } from "@/lib/auth/current-user";
 import { listProjects } from "@/lib/data/project";
 import { PageHeader } from "@/components/layout/page-header";
 import { ExportQuickLinks } from "@/components/export/export-quick-links";
 import { ExportRangeForm } from "@/components/export/export-range-form";
 
 export default async function ExportPage() {
-  const projects = await listProjects();
+  const user = await requireUser();
+  const projects = await listProjects(user.id);
   const projectOptions = projects.map((project) => ({ id: project.id, name: project.name }));
 
   return (

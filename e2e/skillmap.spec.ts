@@ -1,11 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
+import { e2eUserId } from "./helpers";
 
 const TEST_SKILL_NAME = "__e2e__ Rust";
 
 test.afterEach(async () => {
-  await prisma.skill.deleteMany({ where: { name: TEST_SKILL_NAME } });
+  await prisma.skill.deleteMany({ where: { userId: await e2eUserId(), name: TEST_SKILL_NAME } });
 });
 
 test("add a skill, edit its proficiency, see history, then delete it", async ({ page }) => {

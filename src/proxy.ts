@@ -2,11 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isValidSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth/session";
 
-const PUBLIC_PATHS = new Set(["/login", "/api/health"]);
+const PUBLIC_PATHS = new Set(["/login", "/register", "/api/health"]);
 
-// Single-user app, whole-app gate (CLAUDE.md §3: "if auth is added, it will gate the whole app,
-// not filter rows per user") — every route requires a valid session except the login page
-// itself and the health check (used by uptime monitors, not a human).
+// Whole-app gate — every route requires a valid session except login, registration, and the
+// health check (used by uptime monitors, not a human). Per-user data isolation is enforced
+// below this, in the data layer (every query is scoped by userId).
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 

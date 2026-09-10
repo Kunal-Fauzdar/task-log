@@ -1,24 +1,39 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db";
 import { createWorkDay } from "@/lib/data/workday";
 import { importWorkDayGroups } from "@/lib/data/import";
 import type { ImportGroupInput } from "@/lib/validation/import";
+import { createTestUser, deleteTestUser } from "@/test/helpers/user";
 
 const TEST_DATE_EXISTING = new Date("2099-09-10");
 const TEST_DATE_NEW = new Date("2099-09-11");
 const TEST_DATE_HOLIDAY = new Date("2099-09-12");
 
+let userId: string;
+
+beforeAll(async () => {
+  userId = (await createTestUser()).id;
+});
+
+afterAll(async () => {
+  await deleteTestUser(userId);
+});
+
 afterEach(async () => {
   await prisma.workDay.deleteMany({
-    where: { date: { in: [TEST_DATE_EXISTING, TEST_DATE_NEW, TEST_DATE_HOLIDAY] } },
+    where: { userId, date: { in: [TEST_DATE_EXISTING, TEST_DATE_NEW, TEST_DATE_HOLIDAY] } },
   });
 });
 
+function ownedWorkDay(date: Date) {
+  return prisma.workDay.findUnique({ where: { userId_date: { userId, date } } });
+}
+
 describe("importWorkDayGroups — real database data end to end", () => {
   it("imports new days, skips a day that already exists, and never overwrites it", async () => {
-    const existing = await createWorkDay({ date: TEST_DATE_EXISTING });
+    const existing = await createWorkDay({ userId, date: TEST_DATE_EXISTING });
     await prisma.workDay.update({
       where: { id: existing.id },
       data: { notes: "Original notes — must survive the import untouched" },
@@ -59,19 +74,19 @@ describe("importWorkDayGroups — real database data end to end", () => {
       },
     ];
 
-    const outcome = await importWorkDayGroups(groups);
+    const outcome = await importWorkDayGroups(userId, groups);
 
     expect(outcome.importedCount).toBe(2);
     expect(outcome.skippedDuplicates).toEqual(["2099-09-10"]);
     expect(outcome.failed).toEqual([]);
 
-    const untouchedExisting = await prisma.workDay.findUnique({ where: { date: TEST_DATE_EXISTING } });
+    const untouchedExisting = await ownedWorkDay(TEST_DATE_EXISTING);
     expect(untouchedExisting?.notes).toBe("Original notes — must survive the import untouched");
     const existingTasks = await prisma.task.findMany({ where: { workDayId: existing.id } });
     expect(existingTasks).toEqual([]);
 
     const newWorkDay = await prisma.workDay.findUnique({
-      where: { date: TEST_DATE_NEW },
+      where: { userId_date: { userId, date: TEST_DATE_NEW } },
       include: { tasks: { orderBy: { order: "asc" } } },
     });
     expect(newWorkDay?.status).toBe("COMPLETED");
@@ -80,8 +95,33 @@ describe("importWorkDayGroups — real database data end to end", () => {
     expect(newWorkDay?.tasks[0]).toMatchObject({ taskId: "T-9002", link: "https://example.com/T-9002" });
     expect(newWorkDay?.tasks[1]).toMatchObject({ taskId: "T-9003", link: null });
 
-    const holidayWorkDay = await prisma.workDay.findUnique({ where: { date: TEST_DATE_HOLIDAY } });
+    const holidayWorkDay = await ownedWorkDay(TEST_DATE_HOLIDAY);
     expect(holidayWorkDay?.status).toBe("HOLIDAY");
     expect(holidayWorkDay?.dayNote).toBe("Test Holiday");
+  });
+
+  it("a day that exists for another user is not treated as a duplicate", async () => {
+    const other = await createTestUser();
+    try {
+      await createWorkDay({ userId: other.id, date: TEST_DATE_NEW });
+
+      const outcome = await importWorkDayGroups(userId, [
+        {
+          date: "2099-09-11",
+          dayType: "WORKING",
+          dayNote: null,
+          checkIn: "09:00",
+          checkOut: "17:00",
+          breakSeconds: 0,
+          tasks: [],
+        },
+      ]);
+
+      expect(outcome.importedCount).toBe(1);
+      expect(outcome.skippedDuplicates).toEqual([]);
+      expect(await ownedWorkDay(TEST_DATE_NEW)).not.toBeNull();
+    } finally {
+      await deleteTestUser(other.id);
+    }
   });
 });

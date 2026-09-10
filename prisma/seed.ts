@@ -3,6 +3,11 @@ import "dotenv/config";
 import { createSkill, getSkillByName } from "../src/lib/data/skill.ts";
 import { prisma } from "../src/lib/db.ts";
 
+// The SkillMap seed now belongs to a user. By default that's the "owner" account the
+// multi-user migration created for all pre-existing data; override with SEED_OWNER_EMAIL.
+const OWNER_EMAIL = (process.env.SEED_OWNER_EMAIL ?? "kavya.b.analyst@gmail.com").toLowerCase();
+const OWNER_NAME = process.env.SEED_OWNER_NAME ?? "Kavya";
+
 // Initial proficiency values from the user's SkillMap screenshot (spec §20). These are seed
 // defaults, editable afterwards through the Skills UI (Phase 6) — not hardcoded UI text.
 const SKILL_SEED_DATA: { name: string; proficiencyPercentage: number }[] = [
@@ -39,20 +44,30 @@ const SKILL_SEED_DATA: { name: string; proficiencyPercentage: number }[] = [
 ];
 
 async function main() {
+  const owner = await prisma.user.upsert({
+    where: { email: OWNER_EMAIL },
+    // "__RESET_REQUIRED__" is a sentinel no bcrypt.compare can match — set a real password with
+    // `npx tsx scripts/set-password.ts`. A pre-existing owner (from the migration) keeps its hash.
+    create: { email: OWNER_EMAIL, name: OWNER_NAME, passwordHash: "__RESET_REQUIRED__" },
+    update: {},
+  });
+
   let created = 0;
   let skipped = 0;
 
   for (const skill of SKILL_SEED_DATA) {
-    const existing = await getSkillByName(skill.name);
+    const existing = await getSkillByName(owner.id, skill.name);
     if (existing) {
       skipped++;
       continue;
     }
-    await createSkill(skill);
+    await createSkill({ ...skill, userId: owner.id });
     created++;
   }
 
-  console.log(`Skill seed complete: ${created} created, ${skipped} already existed.`);
+  console.log(
+    `Skill seed complete for ${OWNER_EMAIL}: ${created} created, ${skipped} already existed.`,
+  );
 }
 
 main()

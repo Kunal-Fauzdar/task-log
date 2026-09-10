@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
 import { getLocalMonth } from "../src/lib/domain/date";
+import { e2eUserId } from "./helpers";
 
 test("calendar redirects to the current month and supports prev/next navigation", async ({ page }) => {
   await page.goto("/calendar");
@@ -18,9 +19,11 @@ test("calendar redirects to the current month and supports prev/next navigation"
 
 test("a work day in the grid links to its Work Log page", async ({ page }) => {
   const testDate = new Date("2099-08-15");
+  const userId = await e2eUserId();
 
   await prisma.workDay.create({
     data: {
+      userId,
       date: testDate,
       checkIn: new Date(Date.UTC(2099, 7, 15, 9, 0, 0)),
       checkOut: new Date(Date.UTC(2099, 7, 15, 17, 0, 0)),
@@ -35,6 +38,6 @@ test("a work day in the grid links to its Work Log page", async ({ page }) => {
     await page.getByRole("link", { name: "15" }).click();
     await expect(page).toHaveURL(/\/worklog\/2099-08-15$/);
   } finally {
-    await prisma.workDay.deleteMany({ where: { date: testDate } });
+    await prisma.workDay.deleteMany({ where: { userId, date: testDate } });
   }
 });

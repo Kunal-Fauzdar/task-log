@@ -2,14 +2,16 @@ import { test, expect } from "@playwright/test";
 
 import { prisma } from "../src/lib/db";
 import { parseDateOnly } from "../src/lib/domain/date";
+import { e2eUserId } from "./helpers";
 
 const PROJECT_NAME = "__e2e__ Project Timesheet";
 const DATE_PARAM = "2099-08-20";
 const TEST_DATE = parseDateOnly(DATE_PARAM);
 
 test.afterEach(async () => {
-  await prisma.workDay.deleteMany({ where: { date: TEST_DATE } });
-  await prisma.project.deleteMany({ where: { name: PROJECT_NAME } });
+  const userId = await e2eUserId();
+  await prisma.workDay.deleteMany({ where: { userId, date: TEST_DATE } });
+  await prisma.project.deleteMany({ where: { userId, name: PROJECT_NAME } });
 });
 
 test("create a project, file a task under it, export its timesheet, then remove it", async ({
@@ -37,7 +39,9 @@ test("create a project, file a task under it, export its timesheet, then remove 
   await expect(page.getByRole("heading", { level: 3, name: "No project" })).toHaveCount(0);
 
   // Per-project export: same route, filtered, filename carries the project slug
-  const project = await prisma.project.findUniqueOrThrow({ where: { name: PROJECT_NAME } });
+  const project = await prisma.project.findFirstOrThrow({
+    where: { userId: await e2eUserId(), name: PROJECT_NAME },
+  });
   const response = await page.request.get(
     `/api/export?type=day&date=${DATE_PARAM}&projectId=${project.id}`,
   );
@@ -55,6 +59,8 @@ test("create a project, file a task under it, export its timesheet, then remove 
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText(PROJECT_NAME)).toHaveCount(0);
 
-  const task = await prisma.task.findFirstOrThrow({ where: { taskId: "T-7700" } });
+  const task = await prisma.task.findFirstOrThrow({
+    where: { taskId: "T-7700", workDay: { userId: await e2eUserId() } },
+  });
   expect(task.projectId).toBeNull();
 });
