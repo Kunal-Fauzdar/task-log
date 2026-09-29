@@ -4,7 +4,6 @@ import { ArrowDown, ArrowUp, Copy, ExternalLink, Pencil, Trash2 } from "lucide-r
 
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { Badge } from "@/components/ui/badge";
-import { PriorityBadge } from "@/components/task/priority-badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -39,7 +38,6 @@ export function TaskTable({
           <TableRow>
             <TableHead className="w-28">Task ID</TableHead>
             <TableHead>Task</TableHead>
-            <TableHead className="w-24">Priority</TableHead>
             <TableHead className="w-28">Duration</TableHead>
             <TableHead className="w-24">Link</TableHead>
             <TableHead className="w-40 text-right">Actions</TableHead>
@@ -64,9 +62,6 @@ export function TaskTable({
                     ))}
                   </div>
                 )}
-              </TableCell>
-              <TableCell>
-                <PriorityBadge priority={task.priority} />
               </TableCell>
               <TableCell className="whitespace-nowrap tabular-nums">
                 {task.timerStatus === "RUNNING" ? (

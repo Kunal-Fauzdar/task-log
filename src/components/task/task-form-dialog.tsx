@@ -25,7 +25,6 @@ export type TaskRecord = {
   durationSeconds: number;
   link: string | null;
   projectId: string | null;
-  priority: string;
   timerStatus: string;
   timerStartedAt: Date | null;
   skills?: { skillId: string; skill: { name: string } }[];
@@ -69,7 +68,6 @@ export function TaskFormDialog({
       duration: formData.get("duration"),
       link: formData.get("link"),
       projectId: formData.get("projectId") ?? undefined,
-      priority: formData.get("priority") ?? undefined,
     });
     if (!parsed.success) {
       setFieldErrors(parsed.error.flatten().fieldErrors);
@@ -89,7 +87,6 @@ export function TaskFormDialog({
   const [duration, setDuration] = useState(task ? formatSecondsToDuration(task.durationSeconds) : "");
   const [link, setLink] = useState(task?.link ?? "");
   const [projectId, setProjectId] = useState(task?.projectId ?? defaultProjectId ?? "");
-  const [priority, setPriority] = useState(task?.priority ?? "MEDIUM");
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(
     task?.skills?.map((s) => s.skillId) ?? [],
   );
@@ -144,21 +141,6 @@ export function TaskFormDialog({
                 <p className="text-destructive text-sm">{state.fieldErrors.duration[0]}</p>
               )}
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="priority">Priority</Label>
-            <select
-              id="priority"
-              name="priority"
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm outline-none focus-visible:ring-[3px]"
-            >
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
-            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">

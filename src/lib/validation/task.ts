@@ -25,7 +25,6 @@ export const taskInputSchema = z.object({
   // real projects, so a bad id can only be a stale option — the FK (ON DELETE SET NULL) and the
   // action's own null-coercion handle that; no need to check existence here.
   projectId: z.string().trim().max(50).optional(),
-  priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
 });
 
 export type TaskInput = z.infer<typeof taskInputSchema>;

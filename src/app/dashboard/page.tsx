@@ -16,7 +16,6 @@ import { BarChart } from "@/components/charts/bar-chart";
 import { CurrentlyWorking } from "@/components/dashboard/currently-working";
 import { TodaySummary } from "@/components/dashboard/today-summary";
 import { PageHeader } from "@/components/layout/page-header";
-import { PriorityBadge } from "@/components/task/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -112,7 +111,6 @@ export default async function DashboardPage() {
                       {task.project?.name ?? "No project"}
                     </p>
                   </div>
-                  <PriorityBadge priority={task.priority} />
                   <span className="text-muted-foreground w-14 text-right text-xs tabular-nums">
                     {formatSecondsToDuration(task.durationSeconds)}
                   </span>

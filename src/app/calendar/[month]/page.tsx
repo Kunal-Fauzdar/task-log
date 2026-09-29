@@ -18,7 +18,6 @@ import {
   calculateTotalTaskSeconds,
   getMonthRange,
 } from "@/lib/domain/workday";
-import { PriorityBadge } from "@/components/task/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
@@ -141,7 +140,6 @@ export default async function CalendarMonthPage({
               {summaryTasks.slice(0, 5).map((task) => (
                 <li key={task.id} className="flex items-center gap-3 py-2">
                   <p className="min-w-0 flex-1 truncate text-sm">{task.description}</p>
-                  <PriorityBadge priority={task.priority} />
                   <span className="text-muted-foreground text-xs tabular-nums">
                     {formatSecondsToDuration(task.durationSeconds)}
                   </span>

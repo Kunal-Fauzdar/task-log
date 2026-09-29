@@ -58,12 +58,6 @@ const TABS = [
 ] as const;
 
 const DONUT_COLORS = ["#2f6bff", "#6f9bff", "#8b5cf6", "#22a6c9", "#5b6b99", "#a5b4fc"];
-const PRIORITY_COLORS: Record<string, string> = {
-  HIGH: "#e5484d",
-  MEDIUM: "#d69e2e",
-  LOW: "#2f6bff",
-};
-
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -110,12 +104,6 @@ export default async function ReportsPage({
   const projectSlices = [...projectCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([label, value], i) => ({ label, value, color: DONUT_COLORS[i % DONUT_COLORS.length] }));
-
-  const prioritySlices = (["HIGH", "MEDIUM", "LOW"] as const).map((priority) => ({
-    label: { HIGH: "High", MEDIUM: "Medium", LOW: "Low" }[priority],
-    value: tasks.filter((t) => t.priority === priority).length,
-    color: PRIORITY_COLORS[priority],
-  }));
 
   const tabHref = (id: string) => `/reports?from=${fromParam}&to=${toParam}&tab=${id}`;
 
@@ -177,7 +165,7 @@ export default async function ReportsPage({
             </div>
             <BarChart data={hoursByDay} />
           </section>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
             <section className="panel flex flex-col gap-3 p-5">
               <h2 className="text-sm font-semibold">Tasks by Project</h2>
               {projectSlices.length === 0 ? (
@@ -189,14 +177,6 @@ export default async function ReportsPage({
                   centerLabel="Tasks"
                 />
               )}
-            </section>
-            <section className="panel flex flex-col gap-3 p-5">
-              <h2 className="text-sm font-semibold">Tasks by Priority</h2>
-              <DonutChart
-                slices={prioritySlices}
-                centerValue={String(tasks.length)}
-                centerLabel="Tasks"
-              />
             </section>
           </div>
         </>

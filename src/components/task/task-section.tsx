@@ -113,7 +113,6 @@ export function TaskSection({
       durationSeconds: parseDurationToSeconds(String(formData.get("duration") ?? "")),
       link: String(formData.get("link") ?? "") || null,
       projectId,
-      priority: String(formData.get("priority") ?? "MEDIUM"),
       timerStatus: existing?.timerStatus ?? "NONE",
       timerStartedAt: existing?.timerStartedAt ?? null,
       skills: existing?.skills,
