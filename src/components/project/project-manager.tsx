@@ -172,7 +172,7 @@ export function ProjectManager({ projects }: { projects: ProjectRow[] }) {
         </span>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {visible.map((project, i) => (
           <li key={project.id} className="panel group flex flex-col gap-3 p-4">
             <div className="flex items-start gap-3">

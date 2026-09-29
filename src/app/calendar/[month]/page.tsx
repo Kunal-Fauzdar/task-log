@@ -81,7 +81,7 @@ export default async function CalendarMonthPage({
         }
       />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_24rem]">
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold tracking-tight">{formatMonthLabel(monthStart)}</h2>
           <CalendarGrid

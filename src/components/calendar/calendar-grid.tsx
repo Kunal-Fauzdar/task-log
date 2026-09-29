@@ -50,7 +50,7 @@ export function CalendarGrid({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="grid grid-cols-7 gap-1.5 text-center">
+      <div className="grid grid-cols-7 gap-1 text-center sm:gap-1.5 2xl:gap-2">
         {WEEKDAY_HEADERS.map((day, index) => (
           <div
             key={day}
@@ -63,7 +63,7 @@ export function CalendarGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5 2xl:gap-2">
         {cells.map((day, index) => {
           if (day === null) return <div key={`blank-${index}`} />;
 
@@ -81,7 +81,7 @@ export function CalendarGrid({
               key={dateParam}
               href={`/worklog/${dateParam}`}
               className={cn(
-                "flex min-h-20 flex-col items-start justify-start gap-1 rounded-lg border p-2 text-sm transition-colors",
+                "flex min-h-14 flex-col items-start justify-start gap-0.5 rounded-md border p-1 text-xs transition-colors sm:min-h-20 sm:gap-1 sm:rounded-lg sm:p-2 sm:text-sm lg:min-h-24 xl:min-h-28 2xl:min-h-36 2xl:text-base",
                 workDay
                   ? STATUS_STYLES[workDay.status]
                   : cn(
@@ -98,12 +98,15 @@ export function CalendarGrid({
               {workDay && workDay.tasks.length > 0 && (
                 <span
                   className={cn(
-                    "flex items-center gap-1 text-[11px]",
+                    "flex items-center gap-1 text-[10px] sm:text-[11px] 2xl:text-xs",
                     isToday ? "text-primary-foreground/90" : "text-link",
                   )}
                 >
                   <span className="size-1 rounded-full bg-current" />
-                  {workDay.tasks.length} {workDay.tasks.length === 1 ? "task" : "tasks"}
+                  {workDay.tasks.length}
+                  <span className="hidden sm:inline">
+                    {workDay.tasks.length === 1 ? "task" : "tasks"}
+                  </span>
                 </span>
               )}
             </Link>

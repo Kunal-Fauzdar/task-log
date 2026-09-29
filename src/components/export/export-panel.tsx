@@ -22,7 +22,7 @@ export function ExportPanel({ projects }: { projects: { id: string; name: string
   const [tab, setTab] = useState<"quick" | "range">("quick");
 
   return (
-    <section className="panel flex max-w-xl flex-col gap-5 p-5">
+    <section className="panel flex w-full max-w-xl flex-col gap-5 p-5">
       <div role="tablist" aria-label="Export type" className="border-border flex w-fit gap-1 rounded-lg border p-1">
         {(
           [

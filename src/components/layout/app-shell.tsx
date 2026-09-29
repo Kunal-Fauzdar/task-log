@@ -27,7 +27,7 @@ export function AppShell({
     <>
       <Header user={user} />
       <div className="lg:pl-60">
-        <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-10">
+        <main className="mx-auto w-full max-w-[1800px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 2xl:px-12">
           {/* keyed on the route so the content replays a short fade on each client navigation */}
           <div key={pathname} className="route-fade">
             {children}
