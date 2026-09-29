@@ -7,7 +7,7 @@ import { deriveWorkDayStatus } from "@/lib/domain/workday";
 const TASK_INCLUDE = {
   tasks: {
     orderBy: { order: "asc" },
-    include: { skills: { include: { skill: true } } },
+    include: { skills: { include: { skill: true } }, project: true },
   },
 } as const;
 

@@ -1,29 +1,36 @@
-import { FolderKanban } from "lucide-react";
-
 import { requireUser } from "@/lib/auth/current-user";
-import { listProjectsWithTaskCounts } from "@/lib/data/project";
-import { PageHeader } from "@/components/layout/page-header";
+import { listProjectsWithStats } from "@/lib/data/project";
+import { formatDateOnly } from "@/lib/domain/date";
 import { ProjectManager } from "@/components/project/project-manager";
+
+export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
   const user = await requireUser();
-  const projects = await listProjectsWithTaskCounts(user.id);
+  const projects = await listProjectsWithStats(user.id);
+  const totalSeconds = projects.reduce(
+    (sum, p) => sum + p.tasks.reduce((s, t) => s + t.durationSeconds, 0),
+    0,
+  );
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={FolderKanban}
-        eyebrow="Timesheets"
-        title="Projects"
-        description="Group tasks under a project, then export a per-project timesheet. Removing a project keeps its tasks — they just move back to “No project”."
-      />
-      <ProjectManager
-        projects={projects.map((project) => ({
+    <ProjectManager
+      projects={projects.map((project) => {
+        const seconds = project.tasks.reduce((s, t) => s + t.durationSeconds, 0);
+        const lastWorked = project.tasks.reduce<Date | null>(
+          (latest, t) => (!latest || t.workDay.date > latest ? t.workDay.date : latest),
+          null,
+        );
+        return {
           id: project.id,
           name: project.name,
-          taskCount: project._count.tasks,
-        }))}
-      />
-    </div>
+          description: project.description,
+          taskCount: project.tasks.length,
+          seconds,
+          share: totalSeconds > 0 ? Math.round((seconds / totalSeconds) * 100) : 0,
+          lastWorkedDate: lastWorked ? formatDateOnly(lastWorked) : null,
+        };
+      })}
+    />
   );
 }

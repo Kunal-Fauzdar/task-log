@@ -1,133 +1,169 @@
-import { LayoutDashboard } from "lucide-react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import { requireUser } from "@/lib/auth/current-user";
 import { getRecentWorkDays, getWorkDayByDate, listWorkDays } from "@/lib/data/workday";
-import {
-  formatDateOnly,
-  formatDisplayDate,
-  formatMonthLabel,
-  parseMonthOnly,
-} from "@/lib/domain/date";
+import { formatDateOnly, formatDisplayDate, getDayName } from "@/lib/domain/date";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
-import { getMonthRange, getRollingRange, sumNetWorkSeconds } from "@/lib/domain/workday";
+import {
+  WORK_DAY_STATUS_BADGE_VARIANT,
+  WORK_DAY_STATUS_LABELS,
+  calculateTotalTaskSeconds,
+  getRollingRange,
+  sumNetWorkSeconds,
+} from "@/lib/domain/workday";
+import { BarChart } from "@/components/charts/bar-chart";
+import { CurrentlyWorking } from "@/components/dashboard/currently-working";
+import { TodaySummary } from "@/components/dashboard/today-summary";
 import { PageHeader } from "@/components/layout/page-header";
-import { LiveTodayHours } from "@/components/dashboard/live-today-hours";
-import { MonthHoursPanel, type MonthOption } from "@/components/dashboard/month-hours-panel";
-import { RecentWorkDaysTable } from "@/components/dashboard/recent-workdays-table";
-import { StatTile } from "@/components/dashboard/stat-tile";
-import { TodayWorkCard } from "@/components/dashboard/today-work-card";
+import { PriorityBadge } from "@/components/task/priority-badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-// Read-only overview, but always rendered fresh from the database — never served from a
-// build-time static snapshot. Without this, the deployed Dashboard kept showing stale "Recent
-// Work Days" (and stats) because /dashboard has no other dynamic input to force a re-render.
+// Always rendered fresh from the database — never a build-time static snapshot.
 export const dynamic = "force-dynamic";
 
-// "Today" is computed server-side here — unlike /worklog (the data-entry surface, which must
-// use the browser's local date), the Dashboard is a read-only summary, so being off by a few
-// hours near a timezone's midnight boundary only means brief, self-correcting staleness. (The
-// in-progress "hours so far" figure IS computed client-side — see LiveTodayHours — since that
-// one subtracts a naive-local check-in time.)
+// "Today" is computed server-side (the dashboard is a read-only overview; being off by a few
+// hours near midnight is a brief, self-correcting staleness). Live figures use the browser clock.
 function getServerToday(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-const MONTH_PARAM_PATTERN = /^\d{4}-\d{2}$/;
-
-// The last `count` months, newest first, as { value: "YYYY-MM", label: "September 2026" }.
-function recentMonths(today: Date, count: number): MonthOption[] {
-  const options: MonthOption[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const first = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
-    options.push({ value: formatDateOnly(first).slice(0, 7), label: formatMonthLabel(first) });
-  }
-  return options;
-}
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ month?: string }>;
-}) {
+export default async function DashboardPage() {
   const user = await requireUser();
-  const { month: monthParam } = await searchParams;
   const today = getServerToday();
+  const last7 = getRollingRange(today, 7);
 
-  const selectedMonth =
-    monthParam && MONTH_PARAM_PATTERN.test(monthParam)
-      ? parseMonthOnly(monthParam)
-      : new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const selectedMonthValue = formatDateOnly(selectedMonth).slice(0, 7);
-  const monthRange = getMonthRange(selectedMonth);
-
-  const monthOptions = recentMonths(today, 12);
-  // A bookmarked ?month older than the dropdown covers still needs to appear as its selected option.
-  if (!monthOptions.some((option) => option.value === selectedMonthValue)) {
-    monthOptions.push({ value: selectedMonthValue, label: formatMonthLabel(selectedMonth) });
-  }
-
-  // Rolling 30-day window drives the task counts — a calendar month reads as empty on the 1st
-  // even with a full week of work in the days just before it (user feedback).
-  const last30 = getRollingRange(today, 30);
-
-  const [todayWorkDay, month30WorkDays, selectedMonthWorkDays, recentWorkDays] = await Promise.all([
+  const [todayWorkDay, weekWorkDays, recentWorkDays] = await Promise.all([
     getWorkDayByDate(user.id, today),
-    listWorkDays(user.id, last30),
-    listWorkDays(user.id, monthRange),
-    getRecentWorkDays(user.id, 10),
+    listWorkDays(user.id, last7),
+    getRecentWorkDays(user.id, 5),
   ]);
 
-  const todaysHours = todayWorkDay ? sumNetWorkSeconds([todayWorkDay]) : 0;
-  const selectedMonthHours = sumNetWorkSeconds(selectedMonthWorkDays);
+  const tasks = todayWorkDay?.tasks ?? [];
+  const taskSeconds = calculateTotalTaskSeconds(tasks);
 
-  // When today is checked in but not out, LiveTodayHours adds the elapsed-so-far.
-  const inProgress =
-    todayWorkDay && todayWorkDay.checkIn && !todayWorkDay.checkOut
-      ? { checkInIso: todayWorkDay.checkIn.toISOString(), breakSeconds: todayWorkDay.breakSeconds }
-      : null;
+  const chartData = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(last7.from);
+    date.setUTCDate(last7.from.getUTCDate() + i);
+    const key = formatDateOnly(date);
+    const day = weekWorkDays.find((d) => formatDateOnly(d.date) === key);
+    return { label: String(date.getUTCDate()), value: day ? sumNetWorkSeconds([day]) / 3600 : 0 };
+  });
 
-  const monthTasks = month30WorkDays.flatMap((workDay) => workDay.tasks);
-  const monthTaskCount = monthTasks.length;
-  const monthCompletedTaskCount = monthTasks.filter(
-    (task) => task.timerStatus === "COMPLETED",
-  ).length;
+  const currentTask = tasks.length > 0 ? tasks[tasks.length - 1].description : null;
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        icon={LayoutDashboard}
-        eyebrow={formatDisplayDate(today)}
         title="Dashboard"
-        description="Where today stands, your task activity over the last 30 days, and your last ten work days."
+        description={`Here's your work overview for ${formatDisplayDate(today)}.`}
       />
-      <TodayWorkCard workDay={todayWorkDay} />
 
-      <section className="flex flex-col gap-2.5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          Statistics
-        </h2>
-        <MonthHoursPanel
-          months={monthOptions}
-          selected={selectedMonthValue}
-          totalHours={formatSecondsToDuration(selectedMonthHours)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <CurrentlyWorking
+          currentTask={currentTask}
+          workDay={
+            todayWorkDay
+              ? {
+                  id: todayWorkDay.id,
+                  checkInIso: todayWorkDay.checkIn?.toISOString() ?? null,
+                  checkOutIso: todayWorkDay.checkOut?.toISOString() ?? null,
+                  breakSeconds: todayWorkDay.breakSeconds,
+                  onBreak: todayWorkDay.breakStartedAt !== null,
+                }
+              : null
+          }
         />
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          <LiveTodayHours todayBase={todaysHours} inProgress={inProgress} />
-          <StatTile label="Tasks · last 30 days" value={String(monthTaskCount)} accent="primary" />
-          <StatTile
-            label="Completed · last 30 days"
-            value={String(monthCompletedTaskCount)}
-            accent="success"
-          />
-        </div>
-      </section>
+        <TodaySummary
+          taskCount={tasks.length}
+          taskSeconds={taskSeconds}
+          breakSeconds={todayWorkDay?.breakSeconds ?? 0}
+          checkInIso={todayWorkDay?.checkIn?.toISOString() ?? null}
+          checkOutIso={todayWorkDay?.checkOut?.toISOString() ?? null}
+        />
+      </div>
 
-      <section className="flex flex-col gap-2.5">
-        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          Recent Work Days
-        </h2>
-        <RecentWorkDaysTable workDays={recentWorkDays} />
-      </section>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+        <section className="panel flex flex-col gap-3 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Today&apos;s Tasks</h2>
+            <div className="flex items-center gap-3">
+              <Link href="/worklog" className="text-link text-xs hover:underline">
+                View All
+              </Link>
+              <Button asChild size="sm">
+                <Link href="/worklog">
+                  <Plus /> Add Task
+                </Link>
+              </Button>
+            </div>
+          </div>
+          {tasks.length === 0 ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">No tasks logged today.</p>
+          ) : (
+            <ul className="divide-border divide-y">
+              {tasks.slice(0, 6).map((task) => (
+                <li key={task.id} className="flex items-center gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{task.description}</p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {task.project?.name ?? "No project"}
+                    </p>
+                  </div>
+                  <PriorityBadge priority={task.priority} />
+                  <span className="text-muted-foreground w-14 text-right text-xs tabular-nums">
+                    {formatSecondsToDuration(task.durationSeconds)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="flex flex-col gap-4">
+          <section className="panel flex flex-col gap-3 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Last 7 Days</h2>
+              <span className="text-muted-foreground text-xs">Hours</span>
+            </div>
+            <BarChart data={chartData} />
+          </section>
+
+          <section className="panel flex flex-col gap-2 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Recent Work Days</h2>
+              <Link href="/calendar" className="text-link text-xs hover:underline">
+                View All
+              </Link>
+            </div>
+            {recentWorkDays.length === 0 ? (
+              <p className="text-muted-foreground py-4 text-center text-sm">No work logged yet.</p>
+            ) : (
+              <ul className="divide-border divide-y text-sm">
+                {recentWorkDays.map((day) => (
+                  <li key={day.id} className="flex items-center gap-3 py-2">
+                    <Link
+                      href={`/worklog/${formatDateOnly(day.date)}`}
+                      className="hover:text-link flex-1 tabular-nums"
+                    >
+                      {formatDateOnly(day.date)}
+                      <span className="text-muted-foreground ml-3">{getDayName(day.date)}</span>
+                    </Link>
+                    <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[day.status]}>
+                      {WORK_DAY_STATUS_LABELS[day.status]}
+                    </Badge>
+                    <span className="text-muted-foreground w-6 text-right tabular-nums">
+                      {day.tasks.length}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

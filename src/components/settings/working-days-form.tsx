@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CalendarCog, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { updateWorkingDaysAction } from "@/lib/actions/settings-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
@@ -25,13 +25,10 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
   }
 
   return (
-    <section className="bg-secondary flex flex-col gap-3.5 rounded-lg p-4 shadow-sm">
+    <section className="panel flex max-w-2xl flex-col gap-3.5 p-5">
       <div className="flex items-center gap-2">
-        <span className="bg-card text-link flex size-8 items-center justify-center rounded-lg">
-          <CalendarCog className="size-4" />
-        </span>
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Working Days</h2>
+          <h2 className="text-sm font-semibold">Working Days</h2>
           <p className="text-muted-foreground text-sm">
             Days a month or range Excel export fills in as a blank row when nothing was logged —
             so the file always has one row per working day, not just the ones you happened to
@@ -64,7 +61,7 @@ export function WorkingDaysForm({ workingDays }: { workingDays: number[] }) {
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" disabled={isPending}>
-            <Save className="size-4" /> {isPending ? "Saving…" : "Save"}
+            <Save className="size-4" /> {isPending ? "Saving…" : "Save Changes"}
           </Button>
           <span role="status" className="text-muted-foreground text-sm">
             {state.status === "error" && !state.fieldErrors && state.message}

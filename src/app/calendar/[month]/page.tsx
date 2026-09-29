@@ -1,11 +1,25 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { requireUser } from "@/lib/auth/current-user";
 import { listWorkDays } from "@/lib/data/workday";
-import { addMonths, formatDateOnly, formatMonthLabel, parseMonthOnly } from "@/lib/domain/date";
-import { getMonthRange } from "@/lib/domain/workday";
+import {
+  addMonths,
+  formatDateOnly,
+  formatDisplayDate,
+  formatMonthLabel,
+  parseMonthOnly,
+} from "@/lib/domain/date";
+import { formatSecondsToDuration } from "@/lib/domain/duration";
+import {
+  WORK_DAY_STATUS_BADGE_VARIANT,
+  WORK_DAY_STATUS_LABELS,
+  calculateTotalTaskSeconds,
+  getMonthRange,
+} from "@/lib/domain/workday";
+import { PriorityBadge } from "@/components/task/priority-badge";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { Button } from "@/components/ui/button";
@@ -40,20 +54,26 @@ export default async function CalendarMonthPage({
   const nextMonth = addMonths(monthStart, 1);
   const todayParam = formatDateOnly(getServerToday());
 
+  const todayWorkDay = workDaysByDate.get(todayParam);
+  const summaryTasks = todayWorkDay?.tasks ?? [];
+  const summarySeconds = calculateTotalTaskSeconds(summaryTasks);
+  const currentMonthParam = formatDateOnly(getServerToday()).slice(0, 7);
+
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-5">
       <PageHeader
-        icon={CalendarDays}
-        eyebrow="Month"
-        title={formatMonthLabel(monthStart)}
+        title="Calendar"
         actions={
           <>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" aria-label="Previous month">
               <Link href={`/calendar/${formatDateOnly(prevMonth).slice(0, 7)}`}>
                 <ChevronLeft /> Prev
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
+              <Link href={`/calendar/${currentMonthParam}`}>Today</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" aria-label="Next month">
               <Link href={`/calendar/${formatDateOnly(nextMonth).slice(0, 7)}`}>
                 Next <ChevronRight />
               </Link>
@@ -62,30 +82,75 @@ export default async function CalendarMonthPage({
         }
       />
 
-      <div className="border-border bg-card flex flex-wrap gap-4 rounded-lg border px-3 py-2 text-xs">
-        <span className="flex items-center gap-1.5">
-          <span className="border-success bg-success/35 size-3 rounded-sm border" /> Work recorded
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="border-accent bg-accent/25 size-3 rounded-sm border" /> In progress
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="border-brand-strong bg-brand-strong size-3 rounded-sm border" /> Holiday
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="border-accent bg-secondary size-3 rounded-sm border" /> Leave
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="border-border bg-card size-3 rounded-sm border" /> No record
-        </span>
-      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold tracking-tight">{formatMonthLabel(monthStart)}</h2>
+          <CalendarGrid
+            monthStart={monthStart}
+            daysInMonth={daysInMonth}
+            workDaysByDate={workDaysByDate}
+            todayParam={todayParam}
+          />
+          <div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="bg-primary size-3 rounded-sm" /> Today
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="bg-brand-strong/60 border-brand-strong size-3 rounded-sm border" /> Holiday
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="bg-secondary border-border size-3 rounded-sm border" /> Leave
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="bg-card border-border size-3 rounded-sm border" /> Other days
+            </span>
+          </div>
+        </section>
 
-      <CalendarGrid
-        monthStart={monthStart}
-        daysInMonth={daysInMonth}
-        workDaysByDate={workDaysByDate}
-        todayParam={todayParam}
-      />
+        <aside className="panel flex flex-col gap-4 self-start p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">{formatDisplayDate(getServerToday())}</h2>
+            {todayWorkDay && (
+              <Badge variant={WORK_DAY_STATUS_BADGE_VARIANT[todayWorkDay.status]}>
+                {WORK_DAY_STATUS_LABELS[todayWorkDay.status]}
+              </Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-secondary border-border rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs">Focused Time</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">
+                {formatSecondsToDuration(summarySeconds)}
+              </p>
+            </div>
+            <div className="bg-secondary border-border rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs">Tasks</p>
+              <p className="mt-1 text-lg font-semibold tabular-nums">{summaryTasks.length}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Tasks ({summaryTasks.length})</h3>
+            <Link href={`/worklog/${todayParam}`} className="text-link text-xs hover:underline">
+              View All
+            </Link>
+          </div>
+          {summaryTasks.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No tasks logged for today.</p>
+          ) : (
+            <ul className="divide-border divide-y">
+              {summaryTasks.slice(0, 5).map((task) => (
+                <li key={task.id} className="flex items-center gap-3 py-2">
+                  <p className="min-w-0 flex-1 truncate text-sm">{task.description}</p>
+                  <PriorityBadge priority={task.priority} />
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {formatSecondsToDuration(task.durationSeconds)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

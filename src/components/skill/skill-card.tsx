@@ -4,11 +4,7 @@ import { useState } from "react";
 import { History, Pencil, Trash2 } from "lucide-react";
 
 import { formatDateOnly } from "@/lib/domain/date";
-import {
-  SKILL_CATEGORY_PROGRESS_CLASS,
-  SKILL_CATEGORY_SURFACE_CLASS,
-  formatProficiencyChange,
-} from "@/lib/domain/skill";
+import { formatProficiencyChange } from "@/lib/domain/skill";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { SkillRecord } from "@/components/skill/skill-form-dialog";
@@ -30,24 +26,17 @@ export function SkillCard({
   onDelete: (skill: SkillCardData) => void;
 }) {
   const [showHistory, setShowHistory] = useState(false);
-  const category = skill.category as keyof typeof SKILL_CATEGORY_PROGRESS_CLASS;
-  const progressClass = SKILL_CATEGORY_PROGRESS_CLASS[category];
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 rounded-lg p-4 shadow-sm",
-        SKILL_CATEGORY_SURFACE_CLASS[category],
-      )}
-    >
+    <div className="panel flex flex-col gap-2 p-3.5">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium">{skill.name}</h3>
-        <span className="text-sm font-semibold tabular-nums">{skill.proficiencyPercentage}%</span>
+        <h3 className="text-sm font-medium">{skill.name}</h3>
+        <span className="text-muted-foreground text-xs tabular-nums">{skill.proficiencyPercentage}%</span>
       </div>
 
       <Progress
         value={skill.proficiencyPercentage}
-        indicatorClassName={progressClass}
+        indicatorClassName="bg-primary"
         aria-label={`${skill.name} proficiency`}
       />
 

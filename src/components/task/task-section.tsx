@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { AlertTriangle, ListChecks, Plus } from "lucide-react";
 
-import { deleteTaskAction, duplicateTaskAction, moveTaskAction } from "@/lib/actions/task-actions";
+import {
+  createTaskAction,
+  deleteTaskAction,
+  duplicateTaskAction,
+  moveTaskAction,
+  updateTaskAction,
+} from "@/lib/actions/task-actions";
+import { IDLE_ACTION_STATE } from "@/lib/actions/types";
+import { parseDurationToSeconds } from "@/lib/domain/duration";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { getEffectiveTaskSeconds } from "@/lib/domain/task";
 import { groupTasksByProject } from "@/lib/domain/project";
@@ -27,10 +35,49 @@ import {
 } from "@/components/task/task-form-dialog";
 import { TaskTable } from "@/components/task/task-table";
 
+type TaskOp =
+  | { type: "delete"; id: string }
+  | { type: "upsert"; task: TaskRecord }
+  | { type: "duplicate"; id: string; newId: string }
+  | { type: "move"; id: string; direction: "up" | "down" };
+
+// Applies a pending mutation to the list immediately; React reverts to the server-provided
+// `tasks` prop once the action settles and the page revalidates.
+function applyTaskOp(tasks: TaskRecord[], op: TaskOp): TaskRecord[] {
+  switch (op.type) {
+    case "delete":
+      return tasks.filter((t) => t.id !== op.id);
+    case "upsert": {
+      const exists = tasks.some((t) => t.id === op.task.id);
+      return exists ? tasks.map((t) => (t.id === op.task.id ? op.task : t)) : [...tasks, op.task];
+    }
+    case "duplicate": {
+      const source = tasks.find((t) => t.id === op.id);
+      if (!source) return tasks;
+      const copy = { ...source, id: op.newId, timerStatus: "NONE", timerStartedAt: null };
+      const at = tasks.indexOf(source);
+      return [...tasks.slice(0, at + 1), copy, ...tasks.slice(at + 1)];
+    }
+    case "move": {
+      const target = tasks.find((t) => t.id === op.id);
+      if (!target) return tasks;
+      const siblings = tasks.filter((t) => t.projectId === target.projectId);
+      const i = siblings.findIndex((t) => t.id === op.id);
+      const swap = siblings[op.direction === "up" ? i - 1 : i + 1];
+      if (!swap) return tasks;
+      const next = [...tasks];
+      const a = next.indexOf(target);
+      const b = next.indexOf(swap);
+      [next[a], next[b]] = [next[b], next[a]];
+      return next;
+    }
+  }
+}
+
 export function TaskSection({
   workDayId,
   dateParam,
-  tasks,
+  tasks: serverTasks,
   netWorkSeconds,
   availableSkills,
   availableProjects,
@@ -53,7 +100,29 @@ export function TaskSection({
   // null = not creating; { projectId } = creating, with that project pre-selected in the dialog.
   const [createIn, setCreateIn] = useState<{ projectId: string | null } | null>(null);
   const [taskPendingDelete, setTaskPendingDelete] = useState<TaskRecord | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [tasks, applyOptimistic] = useOptimistic(serverTasks, applyTaskOp);
+  const isPending = false;
+
+  function saveTask(formData: FormData, existing?: TaskRecord) {
+    const projectId = String(formData.get("projectId") ?? "") || null;
+    const optimisticTask: TaskRecord = {
+      id: existing?.id ?? `optimistic-${crypto.randomUUID()}`,
+      taskId: String(formData.get("taskId") ?? "").trim(),
+      description: String(formData.get("description") ?? "").trim(),
+      durationSeconds: parseDurationToSeconds(String(formData.get("duration") ?? "")),
+      link: String(formData.get("link") ?? "") || null,
+      projectId,
+      priority: String(formData.get("priority") ?? "MEDIUM"),
+      timerStatus: existing?.timerStatus ?? "NONE",
+      timerStartedAt: existing?.timerStartedAt ?? null,
+      skills: existing?.skills,
+    };
+    startTransition(async () => {
+      applyOptimistic({ type: "upsert", task: optimisticTask });
+      await (existing ? updateTaskAction : createTaskAction)(IDLE_ACTION_STATE, formData);
+    });
+  }
 
   const hasRunningTimer = tasks.some((task) => task.timerStatus === "RUNNING");
   const [now, setNow] = useState(() => new Date());
@@ -84,18 +153,21 @@ export function TaskSection({
     if (!task) return;
     setTaskPendingDelete(null);
     startTransition(async () => {
+      applyOptimistic({ type: "delete", id: task.id });
       await deleteTaskAction(task.id, dateParam);
     });
   }
 
   function handleDuplicate(task: TaskRecord) {
     startTransition(async () => {
+      applyOptimistic({ type: "duplicate", id: task.id, newId: `optimistic-${crypto.randomUUID()}` });
       await duplicateTaskAction(task.id, dateParam);
     });
   }
 
   function handleMove(task: TaskRecord, direction: "up" | "down") {
     startTransition(async () => {
+      applyOptimistic({ type: "move", id: task.id, direction });
       await moveTaskAction(workDayId, dateParam, task.id, direction);
     });
   }
@@ -153,7 +225,6 @@ export function TaskSection({
                 </div>
                 <TaskTable
                   tasks={group.tasks}
-                  dateParam={dateParam}
                   isPending={isPending || isDayOff}
                   onEdit={setDialogTask}
                   onDelete={setTaskPendingDelete}
@@ -188,6 +259,7 @@ export function TaskSection({
           availableSkills={availableSkills}
           availableProjects={availableProjects}
           defaultProjectId={createIn.projectId}
+          onSave={(formData) => saveTask(formData)}
           onClose={() => setCreateIn(null)}
         />
       )}
@@ -197,6 +269,7 @@ export function TaskSection({
           workDayId={workDayId}
           dateParam={dateParam}
           task={dialogTask}
+          onSave={(formData) => saveTask(formData, dialogTask)}
           availableSkills={availableSkills}
           availableProjects={availableProjects}
           onClose={() => setDialogTask(null)}

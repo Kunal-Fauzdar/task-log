@@ -45,11 +45,7 @@ test("start work, break, task timer, end work, and see net work duration", async
 
   const row = page.getByRole("row", { name: /T-3001/ });
   await expect(row).toBeVisible();
-  await row.getByRole("button", { name: "Start timer for T-3001" }).click();
-  await expect(row.getByRole("button", { name: "Pause timer for T-3001" })).toBeVisible();
-  await page.waitForTimeout(1500);
-  await row.getByRole("button", { name: "Pause timer for T-3001" }).click();
-  await expect(row.getByRole("button", { name: "Resume timer for T-3001" })).toBeVisible();
+  await expect(row.getByRole("button", { name: /timer|Complete/ })).toHaveCount(0);
 
   // End work
   await page.getByRole("button", { name: "End Work" }).click();

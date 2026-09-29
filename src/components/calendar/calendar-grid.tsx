@@ -10,10 +10,10 @@ const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // deepest green (holiday). Redundant with the per-status icon below, not reliant on hue alone.
 const STATUS_STYLES: Record<string, string> = {
   NOT_STARTED: "bg-card border-border",
-  IN_PROGRESS: "bg-accent/25 border-accent text-foreground font-medium",
-  COMPLETED: "bg-success/35 border-success text-success-foreground font-medium",
-  HOLIDAY: "bg-brand-strong border-brand-strong text-brand-strong-foreground font-medium",
-  LEAVE: "bg-secondary border-accent text-secondary-foreground font-medium",
+  IN_PROGRESS: "bg-card border-border",
+  COMPLETED: "bg-card border-border",
+  HOLIDAY: "bg-brand-strong/60 border-brand-strong",
+  LEAVE: "bg-secondary border-border",
 };
 
 // A small icon per status, redundant with (not a replacement for) the color coding — keeps the
@@ -28,6 +28,7 @@ const STATUS_ICONS: Record<string, typeof CheckCircle2 | undefined> = {
 type CalendarWorkDay = {
   date: Date;
   status: string;
+  tasks: unknown[];
 };
 
 export function CalendarGrid({
@@ -49,7 +50,7 @@ export function CalendarGrid({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="grid grid-cols-7 gap-1 text-center">
+      <div className="grid grid-cols-7 gap-1.5 text-center">
         {WEEKDAY_HEADERS.map((day, index) => (
           <div
             key={day}
@@ -62,7 +63,7 @@ export function CalendarGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((day, index) => {
           if (day === null) return <div key={`blank-${index}`} />;
 
@@ -80,18 +81,31 @@ export function CalendarGrid({
               key={dateParam}
               href={`/worklog/${dateParam}`}
               className={cn(
-                "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border text-sm transition-colors",
+                "flex min-h-20 flex-col items-start justify-start gap-1 rounded-lg border p-2 text-sm transition-colors",
                 workDay
                   ? STATUS_STYLES[workDay.status]
                   : cn(
                       "hover:border-accent hover:bg-secondary",
                       isWeekendCol ? "bg-secondary/60 border-border/60" : "bg-card border-border",
                     ),
-                isToday && "ring-ring ring-2 ring-offset-2 ring-offset-background",
+                isToday && "bg-primary border-primary text-primary-foreground",
               )}
             >
-              {day}
-              {StatusIcon && <StatusIcon className="size-3" />}
+              <span className="flex w-full items-center justify-between">
+                <span className="tabular-nums">{day}</span>
+                {StatusIcon && <StatusIcon className="size-3 opacity-80" />}
+              </span>
+              {workDay && workDay.tasks.length > 0 && (
+                <span
+                  className={cn(
+                    "flex items-center gap-1 text-[11px]",
+                    isToday ? "text-primary-foreground/90" : "text-link",
+                  )}
+                >
+                  <span className="size-1 rounded-full bg-current" />
+                  {workDay.tasks.length} {workDay.tasks.length === 1 ? "task" : "tasks"}
+                </span>
+              )}
             </Link>
           );
         })}

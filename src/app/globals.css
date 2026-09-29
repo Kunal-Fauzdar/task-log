@@ -25,49 +25,46 @@
   bias the rest of the app follows.
 */
 :root {
-  /* design.md: card & control radius 14px. */
-  --radius: 0.875rem;
+  color-scheme: dark;
+  --radius: 0.625rem;
 
-  --background: #e8f0e2;
-  --foreground: #0d1f17;
+  /* Near-black navy canvas with slightly lifted panels, per the dark dashboard reference. */
+  --background: #080a10;
+  --foreground: #f3f5fa;
 
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
+  --card: #10131c;
+  --card-foreground: #f3f5fa;
+  --popover: #141824;
+  --popover-foreground: #f3f5fa;
 
-  /* Primary action = the deepest green (Screenshot 2's near-black "Observe" pill). */
-  --primary: #14281f;
-  --primary-foreground: #eef4e9;
+  /* Primary action = the reference's saturated UI blue. */
+  --primary: #2f6bff;
+  --primary-foreground: #ffffff;
 
-  /* Soft green chip / secondary-button surface. */
-  --secondary: #d7e6cf;
-  --secondary-foreground: #1f3a2c;
+  --secondary: #171b28;
+  --secondary-foreground: #dfe4f1;
 
-  --muted: #dde9d6;
-  --muted-foreground: #4b5563;
+  --muted: #131725;
+  --muted-foreground: #8b93a7;
 
-  /* design.md accent — sage. Used for "in progress" and hover surfaces. */
-  --accent: #82a89c;
-  --accent-foreground: #0d1f17;
+  /* Accent = a soft blue tint for hover / selected surfaces. */
+  --accent: #4a7dff;
+  --accent-foreground: #ffffff;
 
-  --border: #c6d8bf;
-  --input: #c1d4b9;
-  --ring: #6f9a8c;
+  --border: #222738;
+  --input: #2a3044;
+  --ring: #3d74ff;
 
   /* --- semantic state ------------------------------------------------------ */
-  /* Completed / positive — design.md primary green. */
-  --success: #b1e09d;
-  --success-foreground: #16301f;
-  /* Deepest green — holiday days, the strongest badge. design.md surface token. */
-  --brand-strong: #061c15;
-  --brand-strong-foreground: #dbe9d3;
-  /* Destructive (delete) + "needs attention" — muted brick, the one reserved off-green signal. */
-  --destructive: #9a3324;
-  --destructive-foreground: #fbeeeb;
+  --success: #1f9d63;
+  --success-foreground: #eafff5;
+  --brand-strong: #1c2a5a;
+  --brand-strong-foreground: #c9d8ff;
+  --destructive: #e5484d;
+  --destructive-foreground: #fff1f1;
 
-  /* Readable green for text links / colored glyphs on white (~5.4:1 on --card). */
-  --link: #1f5c43;
+  /* Readable blue for text links / glyphs on the dark surfaces. */
+  --link: #6f9bff;
 }
 
 @theme inline {
@@ -114,7 +111,7 @@
     @apply bg-background text-foreground font-sans;
     /* One quiet directional wash from the paler top edge into the canvas green — no image, no
        blobs, no mesh. Just enough to keep a tall empty page from reading as a flat fill. */
-    background-image: linear-gradient(180deg, #eef4e9 0%, var(--background) 340px);
+    background-image: radial-gradient(900px 340px at 50% -120px, #131a33 0%, var(--background) 100%);
     background-repeat: no-repeat;
     background-attachment: fixed;
   }
@@ -131,10 +128,16 @@
   /* "Display moment" type — Playfair Display italic. Page-header titles and the work-day date
      headline only; never body or section headings. */
   .font-display {
-    font-family: var(--font-display), Georgia, "Times New Roman", serif;
-    font-style: italic;
-    font-weight: 500;
-    letter-spacing: 0;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  /* The dark reference's standard surface: a card panel with a hairline border. */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
   }
 
   /* Section eyebrow — the small tracked mono kicker above a heading (Screenshot 1's

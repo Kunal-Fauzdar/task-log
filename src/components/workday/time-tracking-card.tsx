@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useOptimistic, useState, useTransition } from "react";
 import { Coffee, LogIn, LogOut, RotateCcw, Save } from "lucide-react";
 
 import {
@@ -47,8 +47,33 @@ type WorkDaySummary = {
   dayType: "WORKING" | "HOLIDAY" | "LEAVE";
 };
 
+type TimeOp = "startWork" | "endWork" | "startBreak" | "endBreak";
+
+// Instant UI response for the quick actions; the server's revalidated value replaces it.
+function applyTimeOp(day: WorkDaySummary, op: TimeOp): WorkDaySummary {
+  const breakElapsed = day.breakStartedAt
+    ? Math.floor((Date.now() - day.breakStartedAt.getTime()) / 1000)
+    : 0;
+  switch (op) {
+    case "startWork":
+      return { ...day, checkIn: getNaiveLocalNow(), checkOut: null, status: "IN_PROGRESS" };
+    case "endWork":
+      return {
+        ...day,
+        checkOut: getNaiveLocalNow(),
+        breakStartedAt: null,
+        breakSeconds: day.breakSeconds + breakElapsed,
+        status: "COMPLETED",
+      };
+    case "startBreak":
+      return { ...day, breakStartedAt: new Date() };
+    case "endBreak":
+      return { ...day, breakStartedAt: null, breakSeconds: day.breakSeconds + breakElapsed };
+  }
+}
+
 export function TimeTrackingCard({
-  workDay,
+  workDay: serverWorkDay,
   dateParam,
   totalTaskSeconds,
 }: {
@@ -57,7 +82,9 @@ export function TimeTrackingCard({
   totalTaskSeconds: number;
 }) {
   const isToday = useIsToday(dateParam);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [workDay, applyOptimistic] = useOptimistic(serverWorkDay, applyTimeOp);
+  const isPending = false;
   const [timesState, timesFormAction, isTimesPending] = useActionState(
     updateWorkDayTimesAction,
     IDLE_ACTION_STATE,
@@ -101,24 +128,28 @@ export function TimeTrackingCard({
 
   function handleStartWork() {
     startTransition(async () => {
+      applyOptimistic("startWork");
       await startWorkAction(workDay.id, dateParam, getNaiveLocalNow().toISOString());
     });
   }
 
   function handleEndWork() {
     startTransition(async () => {
+      applyOptimistic("endWork");
       await endWorkAction(workDay.id, dateParam, getNaiveLocalNow().toISOString());
     });
   }
 
   function handleStartBreak() {
     startTransition(async () => {
+      applyOptimistic("startBreak");
       await startBreakAction(workDay.id, dateParam);
     });
   }
 
   function handleEndBreak() {
     startTransition(async () => {
+      applyOptimistic("endBreak");
       await endBreakAction(workDay.id, dateParam);
     });
   }
@@ -138,9 +169,9 @@ export function TimeTrackingCard({
     workDay.checkIn !== null || workDay.checkOut !== null || workDay.breakSeconds > 0 || isOnBreak;
 
   return (
-    <section className="bg-accent/15 flex flex-col gap-3.5 rounded-lg p-5 shadow-md">
+    <section className="panel flex flex-col gap-3.5 p-5">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
           Time Tracking
         </h2>
         {WORK_DAY_STATUS_LABELS[statusKey] ? (

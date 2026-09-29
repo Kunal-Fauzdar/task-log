@@ -7,7 +7,11 @@ import { prisma } from "@/lib/db";
 export function getTasksInRange(userId: string, range: { from: Date; to: Date }) {
   return prisma.task.findMany({
     where: { workDay: { userId, date: { gte: range.from, lte: range.to } } },
-    include: { workDay: { select: { date: true } }, skills: { include: { skill: true } } },
+    include: {
+      workDay: { select: { date: true } },
+      project: { select: { name: true } },
+      skills: { include: { skill: true } },
+    },
     orderBy: [{ workDay: { date: "asc" } }, { order: "asc" }],
   });
 }

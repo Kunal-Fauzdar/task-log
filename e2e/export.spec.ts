@@ -31,6 +31,7 @@ test("custom range export downloads a real xlsx file with the logged task in it"
   });
 
   await page.goto("/export");
+  await page.getByRole("tab", { name: "Custom Range" }).click();
 
   await page.locator("#export-from").fill("2099-11-05");
   await page.locator("#export-to").fill("2099-11-05");
@@ -73,6 +74,7 @@ test("all-projects export tags each task's Task List cell with its project name"
   });
 
   await page.goto("/export");
+  await page.getByRole("tab", { name: "Custom Range" }).click();
   await page.locator("#export-from").fill("2099-11-05");
   await page.locator("#export-to").fill("2099-11-05");
 

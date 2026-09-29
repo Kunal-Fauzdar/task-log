@@ -50,8 +50,8 @@ enum SkillCategory {
 /// the display name shown in the UI. Every domain row is owned by exactly one User via `userId`
 /// (onDelete: Cascade) — see CLAUDE.md §3/§4 for the move from single-user to per-user data.
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String       @id @default(cuid())
+  email        String       @unique
   name         String
   passwordHash String
   workDays     WorkDay[]
@@ -59,8 +59,8 @@ model User {
   projects     Project[]
   holidays     Holiday[]
   settings     AppSettings?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@map("users")
 }
@@ -104,6 +104,7 @@ model Task {
   order           Int             @default(0)
   timerStatus     TaskTimerStatus @default(NONE)
   timerStartedAt  DateTime?
+  priority        TaskPriority    @default(MEDIUM)
   // Optional project grouping. onDelete: SetNull — removing a Project unassigns its tasks
   // (they stay in their work days), never deletes them (user decision).
   projectId       String?
@@ -122,13 +123,14 @@ model Task {
 /// export can filter to a single project to produce a per-project timesheet; a task with no
 /// project just contributes its day's timings to the default (all-projects) export.
 model Project {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  tasks     Task[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([userId, name])
   @@index([userId])
@@ -173,8 +175,8 @@ model SkillHistory {
 model TaskSkill {
   taskId  String
   skillId String
-  task    Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  skill   Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@id([taskId, skillId])
   @@index([skillId])
@@ -211,4 +213,10 @@ model Holiday {
   @@unique([userId, date])
   @@index([userId])
   @@map("holidays")
+}
+
+enum TaskPriority {
+  HIGH
+  MEDIUM
+  LOW
 }

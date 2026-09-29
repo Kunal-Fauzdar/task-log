@@ -5,6 +5,7 @@ import { useState, type ComponentProps } from "react";
 import { calculateTotalTaskSeconds } from "@/lib/domain/workday";
 import { TimeTrackingCard } from "@/components/workday/time-tracking-card";
 import { WorkDayHeader } from "@/components/workday/workday-header";
+import { DaySummary } from "@/components/workday/day-summary";
 import { TaskSection } from "@/components/task/task-section";
 
 type DayType = "WORKING" | "HOLIDAY" | "LEAVE";
@@ -51,11 +52,18 @@ export function WorkDayPanels({
         dayType={dayType}
         onDayTypeChange={setDayType}
       />
-      <TimeTrackingCard
-        workDay={{ ...workDay, dayType }}
-        dateParam={dateParam}
-        totalTaskSeconds={totalTaskSeconds}
-      />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <TimeTrackingCard
+          workDay={{ ...workDay, dayType }}
+          dateParam={dateParam}
+          totalTaskSeconds={totalTaskSeconds}
+        />
+        <DaySummary
+          taskCount={workDay.tasks.length}
+          taskSeconds={totalTaskSeconds}
+          breakSeconds={workDay.breakSeconds}
+        />
+      </div>
       <TaskSection
         workDayId={workDay.id}
         dateParam={dateParam}

@@ -21,7 +21,10 @@ export async function createProjectAction(
   formData: FormData,
 ): Promise<ActionState> {
   const user = await requireUser();
-  const parsed = projectInputSchema.safeParse({ name: formData.get("name") });
+  const parsed = projectInputSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") ?? undefined,
+  });
   if (!parsed.success) {
     return {
       status: "error",
@@ -31,7 +34,11 @@ export async function createProjectAction(
   }
 
   try {
-    await createProject({ userId: user.id, name: parsed.data.name });
+    await createProject({
+      userId: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description || undefined,
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return {

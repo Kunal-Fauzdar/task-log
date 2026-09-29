@@ -17,8 +17,37 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
 import { SkillCard, type SkillCardData } from "@/components/skill/skill-card";
 import { SkillFormDialog } from "@/components/skill/skill-form-dialog";
+
+function FilterTab({
+  active,
+  onClick,
+  count,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        active
+          ? "bg-primary/15 text-link flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium"
+          : "text-muted-foreground hover:text-foreground flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
+      }
+    >
+      {children}
+      <span className="bg-secondary rounded px-1.5 text-xs tabular-nums">{count}</span>
+    </button>
+  );
+}
 
 type CategoryFilter = "ALL" | (typeof SKILL_CATEGORY_ORDER)[number];
 
@@ -55,8 +84,29 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
 
   return (
     <div className="flex flex-col gap-5">
+      <PageHeader
+        title="Skill Map"
+        description="Track and improve your skills. Organize them into proficiency bands."
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          <div className="border-border flex flex-wrap gap-1 rounded-lg border p-1" role="group" aria-label="Filter by category">
+            <FilterTab active={categoryFilter === "ALL"} onClick={() => setCategoryFilter("ALL")} count={skills.length}>
+              All
+            </FilterTab>
+            {SKILL_CATEGORY_ORDER.map((category) => (
+              <FilterTab
+                key={category}
+                active={categoryFilter === category}
+                onClick={() => setCategoryFilter(category)}
+                count={skills.filter((s) => s.category === category).length}
+              >
+                {SKILL_CATEGORY_LABELS[category]}
+              </FilterTab>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
             <Input
@@ -67,31 +117,10 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
               aria-label="Search skills"
             />
           </div>
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by category">
-            <Button
-              type="button"
-              size="sm"
-              variant={categoryFilter === "ALL" ? "secondary" : "ghost"}
-              onClick={() => setCategoryFilter("ALL")}
-            >
-              All
-            </Button>
-            {SKILL_CATEGORY_ORDER.map((category) => (
-              <Button
-                key={category}
-                type="button"
-                size="sm"
-                variant={categoryFilter === category ? "secondary" : "ghost"}
-                onClick={() => setCategoryFilter(category)}
-              >
-                {SKILL_CATEGORY_LABELS[category]}
-              </Button>
-            ))}
-          </div>
+          <Button onClick={() => setIsCreating(true)}>
+            <Plus /> Add Skill
+          </Button>
         </div>
-        <Button onClick={() => setIsCreating(true)}>
-          <Plus /> Add Skill
-        </Button>
       </div>
 
       {filtered.length === 0 && (
@@ -104,13 +133,13 @@ export function SkillMap({ skills }: { skills: SkillCardData[] }) {
         (group) =>
           group.skills.length > 0 && (
             <section key={group.category} className="flex flex-col gap-2.5">
-              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
                 {SKILL_CATEGORY_LABELS[group.category]}{" "}
                 <span className="text-muted-foreground text-sm font-normal">
                   ({group.skills.length})
                 </span>
               </h2>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {group.skills.map((skill) => (
                   <SkillCard
                     key={skill.id}

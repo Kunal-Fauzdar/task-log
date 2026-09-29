@@ -196,3 +196,7 @@ export function parseClockTimeToHHMM(value: string): string {
   }
   return `${String(hours).padStart(2, "0")}:${minutes}`;
 }
+
+export function addDays(date: Date, delta: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + delta));
+}

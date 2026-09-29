@@ -26,7 +26,7 @@ export function AppShell({
   return (
     <>
       <Header user={user} />
-      <div className="lg:pl-64">
+      <div className="lg:pl-60">
         <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-10">
           {/* keyed on the route so the content replays a short fade on each client navigation */}
           <div key={pathname} className="route-fade">

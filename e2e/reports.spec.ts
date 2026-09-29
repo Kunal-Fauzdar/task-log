@@ -42,16 +42,19 @@ test("reports page shows aggregated stats and tables for a filtered date range",
 
     // Work Summary — precise math is covered by unit/integration tests; here just confirm the
     // tile renders with a real (non-placeholder) duration value.
-    await expect(page.getByText("Total working days")).toBeVisible();
+    await expect(page.getByText("Working Days")).toBeVisible();
     await expect(page.getByText("8:00:00").first()).toBeVisible();
 
     // Task Summary — the recurring Task ID row
+    await page.goto("/reports?from=2099-12-20&to=2099-12-20&tab=tasks");
     await expect(page.getByRole("cell", { name: "T-9001" })).toBeVisible();
 
     // Skill Usage — the tagged skill shows up with its task count
+    await page.goto("/reports?from=2099-12-20&to=2099-12-20&tab=skills");
     await expect(page.getByRole("cell", { name: SKILL_NAME })).toBeVisible();
 
     // Monthly Summary
+    await page.goto("/reports?from=2099-12-20&to=2099-12-20&tab=work");
     await expect(page.getByText("December 2099")).toBeVisible();
   } finally {
     await prisma.workDay.deleteMany({ where: { userId, date: SEEDED_TEST_DATE } });

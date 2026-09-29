@@ -9,10 +9,7 @@ import { Label } from "@/components/ui/label";
 // Content-Disposition header makes the browser download the response instead of navigating to it.
 export function ExportRangeForm({ projects }: { projects: { id: string; name: string }[] }) {
   return (
-    <section className="bg-accent/15 flex flex-col gap-2.5 rounded-lg p-4 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        Custom Range
-      </h2>
+    <div className="flex flex-col gap-2.5">
       <form method="GET" action="/api/export" className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="type" value="range" />
         <div className="flex flex-col gap-1.5">
@@ -45,6 +42,6 @@ export function ExportRangeForm({ projects }: { projects: { id: string; name: st
           <Download className="size-4" /> Export Range
         </Button>
       </form>
-    </section>
+    </div>
   );
 }

@@ -22,7 +22,18 @@ export function listProjectsWithTaskCounts(userId: string) {
   });
 }
 
-export function createProject(data: { userId: string; name: string }) {
+// Per-project aggregates for the Projects page cards (share of tracked time, last worked day).
+export function listProjectsWithStats(userId: string) {
+  return prisma.project.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    include: {
+      tasks: { select: { durationSeconds: true, workDay: { select: { date: true } } } },
+    },
+  });
+}
+
+export function createProject(data: { userId: string; name: string; description?: string }) {
   return prisma.project.create({ data });
 }
 

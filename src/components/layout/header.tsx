@@ -66,8 +66,8 @@ function NavList({
               "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
               "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
               active
-                ? "bg-secondary text-foreground font-semibold after:absolute after:top-1/2 after:left-0 after:h-5 after:w-0.5 after:-translate-y-1/2 after:rounded-full after:bg-accent"
-                : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground font-medium",
+                ? "bg-primary/15 text-link font-medium"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
           >
             <Icon className="size-4 shrink-0" />
@@ -93,10 +93,19 @@ function AccountFooter({
         <Link
           href="/account"
           onClick={onNavigate}
-          className="text-foreground hover:bg-secondary focus-visible:ring-ring mb-1 flex flex-col rounded-md px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className="text-foreground hover:bg-secondary focus-visible:ring-ring mb-1 flex items-center gap-3 rounded-md px-2 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
-          <span className="truncate text-sm font-medium">{user.name}</span>
-          <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+          <span className="bg-primary/20 text-link flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold uppercase">
+            {user.name
+              .split(/s+/)
+              .map((part) => part[0])
+              .slice(0, 2)
+              .join("")}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-medium">{user.name}</span>
+            <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+          </span>
         </Link>
       )}
       <form action={logoutAction}>
@@ -131,7 +140,7 @@ export function Header({ user }: { user: CurrentUser | null }) {
   return (
     <>
       {/* Desktop: fixed vertical sidebar. */}
-      <aside className="border-border bg-background fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r lg:flex">
+      <aside className="border-border bg-background fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r lg:flex">
         <div className="border-border flex h-16 items-center border-b px-5">
           <Wordmark />
         </div>

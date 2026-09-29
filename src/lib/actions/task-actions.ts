@@ -30,6 +30,7 @@ function parseTaskForm(formData: FormData) {
     duration: formData.get("duration"),
     link: formData.get("link"),
     projectId: formData.get("projectId") ?? undefined,
+    priority: formData.get("priority") ?? undefined,
   });
 }
 
@@ -67,6 +68,7 @@ export async function createTaskAction(
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || undefined,
     projectId: parsed.data.projectId || null,
+    priority: parsed.data.priority,
   });
   await setTaskSkills(user.id, task.id, parseSkillIds(formData));
 
@@ -97,6 +99,7 @@ export async function updateTaskAction(
     durationSeconds: parsed.data.duration,
     link: parsed.data.link || null,
     projectId: parsed.data.projectId || null,
+    priority: parsed.data.priority,
   });
   await setTaskSkills(user.id, id, parseSkillIds(formData));
 

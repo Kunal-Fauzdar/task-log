@@ -19,8 +19,9 @@ test("create a project, file a task under it, export its timesheet, then remove 
 }) => {
   // Add the project
   await page.goto("/projects");
+  await page.getByRole("button", { name: "Add Project" }).first().click();
   await page.getByLabel("Project name").fill(PROJECT_NAME);
-  await page.getByRole("button", { name: "Add Project" }).click();
+  await page.getByRole("button", { name: "Create Project" }).click();
   await expect(page.getByText(PROJECT_NAME)).toBeVisible();
 
   // File a task under it on a work day

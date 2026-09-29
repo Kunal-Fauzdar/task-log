@@ -51,7 +51,7 @@ test("work log day: add, edit, and delete a task; toggle holiday", async ({ page
   await holidayButton.click();
   await page.getByLabel("Holiday reason").fill("Phase 11 QA Holiday");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Saved.")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(holidayButton).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Holiday reason")).toHaveValue("Phase 11 QA Holiday");
@@ -66,7 +66,7 @@ test("work log day: add, edit, and delete a task; toggle holiday", async ({ page
   await workingButton.click();
   await expect(page.getByLabel("Holiday reason")).toHaveCount(0);
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Saved.")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(workingButton).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Holiday reason")).toHaveCount(0);

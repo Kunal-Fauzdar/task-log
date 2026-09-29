@@ -7,13 +7,22 @@ import { Label } from "@/components/ui/label";
 // Plain native GET form — no client JS, mirrors the Export page's ExportRangeForm. Submits to
 // /reports?from=...&to=..., which the page reads as searchParams and falls back to the current
 // month for on missing/invalid values (spec §31: "Reports should support date filtering").
-export function ReportDateFilterForm({ from, to }: { from: string; to: string }) {
+export function ReportDateFilterForm({
+  from,
+  to,
+  tab,
+}: {
+  from: string;
+  to: string;
+  tab?: string;
+}) {
   return (
     <form
       method="GET"
       action="/reports"
-      className="bg-accent/15 flex flex-wrap items-end gap-3 rounded-lg p-4 shadow-sm"
+      className="flex flex-wrap items-end gap-3"
     >
+      {tab && <input type="hidden" name="tab" value={tab} />}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="report-from">From</Label>
         <Input id="report-from" name="from" type="date" defaultValue={from} required />

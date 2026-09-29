@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Copy, ExternalLink, Pencil, Trash2 } from "lucide-r
 
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { Badge } from "@/components/ui/badge";
+import { PriorityBadge } from "@/components/task/priority-badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,11 +16,9 @@ import {
 } from "@/components/ui/table";
 import type { TaskRecord } from "@/components/task/task-form-dialog";
 import { LiveElapsed } from "@/components/workday/live-elapsed";
-import { TaskTimerControls } from "@/components/task/task-timer-controls";
 
 export function TaskTable({
   tasks,
-  dateParam,
   isPending,
   onEdit,
   onDelete,
@@ -27,7 +26,6 @@ export function TaskTable({
   onMove,
 }: {
   tasks: TaskRecord[];
-  dateParam: string;
   isPending: boolean;
   onEdit: (task: TaskRecord) => void;
   onDelete: (task: TaskRecord) => void;
@@ -41,8 +39,8 @@ export function TaskTable({
           <TableRow>
             <TableHead className="w-28">Task ID</TableHead>
             <TableHead>Task</TableHead>
+            <TableHead className="w-24">Priority</TableHead>
             <TableHead className="w-28">Duration</TableHead>
-            <TableHead className="w-28">Timer</TableHead>
             <TableHead className="w-24">Link</TableHead>
             <TableHead className="w-40 text-right">Actions</TableHead>
           </TableRow>
@@ -67,15 +65,15 @@ export function TaskTable({
                   </div>
                 )}
               </TableCell>
+              <TableCell>
+                <PriorityBadge priority={task.priority} />
+              </TableCell>
               <TableCell className="whitespace-nowrap tabular-nums">
                 {task.timerStatus === "RUNNING" ? (
                   <LiveElapsed baseSeconds={task.durationSeconds} startedAt={task.timerStartedAt} />
                 ) : (
                   formatSecondsToDuration(task.durationSeconds)
                 )}
-              </TableCell>
-              <TableCell>
-                <TaskTimerControls task={task} dateParam={dateParam} disabled={isPending} />
               </TableCell>
               <TableCell>
                 {task.link && (

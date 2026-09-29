@@ -1,5 +1,3 @@
-import { Settings as SettingsIcon } from "lucide-react";
-
 import { requireUser } from "@/lib/auth/current-user";
 import { getWorkingDays } from "@/lib/data/settings";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,12 +8,10 @@ export default async function SettingsPage() {
   const workingDays = await getWorkingDays(user.id);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <PageHeader
-        icon={SettingsIcon}
-        eyebrow="Configuration"
         title="Settings"
-        description="Which weekdays count as working days. Exports use this to show a row for every expected day."
+        description="Configure your working days and preferences."
       />
       <WorkingDaysForm workingDays={workingDays} />
     </div>

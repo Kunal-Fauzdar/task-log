@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { tolerateAlreadyDeleted } from "@/lib/data/shared";
 
+type TaskPriority = "HIGH" | "MEDIUM" | "LOW";
+
 // Tasks have no `userId` column of their own — ownership is "the task's WorkDay belongs to the
 // user", expressed as `where: { workDay: { userId } }` (or `{ id, workDay: { userId } }` for a
 // by-id mutation). Callers that create tasks pass a workDayId they already resolved through a
@@ -28,6 +30,7 @@ export async function createTask(data: {
   durationSeconds?: number;
   link?: string;
   projectId?: string | null;
+  priority?: TaskPriority;
   order?: number;
 }) {
   const order = data.order ?? (await getNextTaskOrder(data.workDayId));
@@ -76,6 +79,7 @@ export async function updateTask(
     durationSeconds?: number;
     link?: string | null;
     projectId?: string | null;
+    priority?: TaskPriority;
   },
 ) {
   if (!(await ownedTask(userId, id))) return null;
@@ -100,6 +104,7 @@ export async function duplicateTask(userId: string, id: string) {
       durationSeconds: original.durationSeconds,
       link: original.link,
       projectId: original.projectId,
+      priority: original.priority,
       order,
     },
   });

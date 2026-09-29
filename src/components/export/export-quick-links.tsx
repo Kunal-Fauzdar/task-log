@@ -15,10 +15,7 @@ export function ExportQuickLinks({ projects }: { projects: { id: string; name: s
   const projectQuery = projectId ? `&projectId=${projectId}` : "";
 
   return (
-    <section className="bg-secondary flex flex-col gap-2.5 rounded-lg p-4 shadow-sm">
-      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        Quick Export
-      </h2>
+    <div className="flex flex-col gap-3.5">
       {projects.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="quick-export-project">Project</Label>
@@ -26,7 +23,7 @@ export function ExportQuickLinks({ projects }: { projects: { id: string; name: s
             id="quick-export-project"
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full max-w-xs rounded-md border px-3 py-1 text-sm outline-none focus-visible:ring-[3px]"
+            className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full rounded-md border px-3 py-1 text-sm outline-none focus-visible:ring-[3px]"
           >
             <option value="">All projects</option>
             {projects.map((project) => (
@@ -37,18 +34,28 @@ export function ExportQuickLinks({ projects }: { projects: { id: string; name: s
           </select>
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button asChild>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="quick-export-format">Format</Label>
+        <select
+          id="quick-export-format"
+          disabled
+          className="border-input bg-card h-10 w-full rounded-md border px-3 py-1 text-sm opacity-80"
+        >
+          <option>Excel (.xlsx)</option>
+        </select>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Button asChild className="w-full">
           <a href={today ? `/api/export?type=day&date=${today}${projectQuery}` : undefined}>
             <Download className="size-4" /> Export Today
           </a>
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="w-full">
           <a href={month ? `/api/export?type=month&month=${month}${projectQuery}` : undefined}>
             <CalendarCheck className="size-4" /> Export This Month
           </a>
         </Button>
       </div>
-    </section>
+    </div>
   );
 }

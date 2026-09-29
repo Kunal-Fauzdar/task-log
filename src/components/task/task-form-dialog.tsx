@@ -1,10 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useState } from "react";
 import { Save } from "lucide-react";
 
-import { createTaskAction, updateTaskAction } from "@/lib/actions/task-actions";
-import { IDLE_ACTION_STATE } from "@/lib/actions/types";
+import { taskInputSchema } from "@/lib/validation/task";
 import { formatSecondsToDuration } from "@/lib/domain/duration";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +25,7 @@ export type TaskRecord = {
   durationSeconds: number;
   link: string | null;
   projectId: string | null;
+  priority: string;
   timerStatus: string;
   timerStartedAt: Date | null;
   skills?: { skillId: string; skill: { name: string } }[];
@@ -41,8 +41,10 @@ export function TaskFormDialog({
   availableSkills,
   availableProjects,
   defaultProjectId,
+  onSave,
   onClose,
 }: {
+  onSave: (formData: FormData) => void;
   workDayId: string;
   dateParam: string;
   task?: TaskRecord;
@@ -52,8 +54,30 @@ export function TaskFormDialog({
   defaultProjectId?: string | null;
   onClose: () => void;
 }) {
-  const action = task ? updateTaskAction : createTaskAction;
-  const [state, formAction, isPending] = useActionState(action, IDLE_ACTION_STATE);
+  // Validated on the client with the same Zod schema the server uses, so the dialog can close
+  // instantly and hand the save to the parent (optimistic) instead of waiting on the server.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
+  const state = { status: "idle" as const, message: undefined, fieldErrors };
+  const isPending = false;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const parsed = taskInputSchema.safeParse({
+      taskId: formData.get("taskId") ?? undefined,
+      description: formData.get("description"),
+      duration: formData.get("duration"),
+      link: formData.get("link"),
+      projectId: formData.get("projectId") ?? undefined,
+      priority: formData.get("priority") ?? undefined,
+    });
+    if (!parsed.success) {
+      setFieldErrors(parsed.error.flatten().fieldErrors);
+      return;
+    }
+    onSave(formData);
+    onClose();
+  }
 
   // Controlled inputs, not defaultValue: React 19 resets a <form action={...}> after every
   // action call that resolves without throwing — including our own validation-error returns,
@@ -65,6 +89,7 @@ export function TaskFormDialog({
   const [duration, setDuration] = useState(task ? formatSecondsToDuration(task.durationSeconds) : "");
   const [link, setLink] = useState(task?.link ?? "");
   const [projectId, setProjectId] = useState(task?.projectId ?? defaultProjectId ?? "");
+  const [priority, setPriority] = useState(task?.priority ?? "MEDIUM");
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(
     task?.skills?.map((s) => s.skillId) ?? [],
   );
@@ -75,12 +100,6 @@ export function TaskFormDialog({
     );
   }
 
-  useEffect(() => {
-    if (state.status === "success") {
-      onClose();
-    }
-  }, [state.status, onClose]);
-
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -88,7 +107,7 @@ export function TaskFormDialog({
           <DialogTitle>{task ? "Edit Task" : "Add Task"}</DialogTitle>
         </DialogHeader>
 
-        <form action={formAction} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input type="hidden" name="workDayId" value={workDayId} />
           <input type="hidden" name="date" value={dateParam} />
           {task && <input type="hidden" name="id" value={task.id} />}
@@ -125,6 +144,21 @@ export function TaskFormDialog({
                 <p className="text-destructive text-sm">{state.fieldErrors.duration[0]}</p>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="priority">Priority</Label>
+            <select
+              id="priority"
+              name="priority"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 py-1 text-sm outline-none focus-visible:ring-[3px]"
+            >
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -206,18 +240,12 @@ export function TaskFormDialog({
             </div>
           )}
 
-          {state.status === "error" && state.message && (
-            <p role="alert" className="text-destructive text-sm">
-              {state.message}
-            </p>
-          )}
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              <Save /> {isPending ? "Saving…" : "Save"}
+              <Save /> Save
             </Button>
           </DialogFooter>
         </form>

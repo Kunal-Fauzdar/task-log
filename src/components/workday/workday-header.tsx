@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { PalmtreeIcon, Plane, Save, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, PalmtreeIcon, Plane, Trash2 } from "lucide-react";
 
 import { deleteWorkDayAction, updateWorkDayAction } from "@/lib/actions/workday-actions";
 import { IDLE_ACTION_STATE } from "@/lib/actions/types";
-import { formatDisplayDate, isWeekend } from "@/lib/domain/date";
+import { addDays, formatDateOnly, formatDisplayDate, isWeekend } from "@/lib/domain/date";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type DayType = "WORKING" | "HOLIDAY" | "LEAVE";
@@ -83,12 +83,25 @@ export function WorkDayHeader({
   }
 
   return (
-    <section className="bg-secondary flex flex-col gap-3.5 rounded-lg p-5 shadow-md">
+    <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="font-display text-2xl">{formatDisplayDate(workDay.date)}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{formatDisplayDate(workDay.date)}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="icon" aria-label="Previous day">
+            <Link href={`/worklog/${formatDateOnly(addDays(workDay.date, -1))}`}>
+              <ChevronLeft />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/worklog">Today</Link>
+          </Button>
+          <Button asChild variant="outline" size="icon" aria-label="Next day">
+            <Link href={`/worklog/${formatDateOnly(addDays(workDay.date, 1))}`}>
+              <ChevronRight />
+            </Link>
+          </Button>
           {isWeekend(workDay.date) && <Badge variant="outline">Weekend</Badge>}
           {dayType === "HOLIDAY" && (
             <Badge variant="brand">
@@ -135,20 +148,23 @@ export function WorkDayHeader({
         <input type="hidden" name="dayType" value={dayType} />
 
         <div className="flex flex-col gap-1.5">
-          <Label>Day type</Label>
-          <div className="flex flex-wrap gap-2">
+          <Label className="sr-only">Day type</Label>
+          <div className="flex w-fit gap-1 rounded-lg border border-border p-1">
             {DAY_TYPE_OPTIONS.map((option) => (
-              <Button
+              <button
                 key={option.value}
                 type="button"
-                size="sm"
-                variant={dayType === option.value ? "default" : "outline"}
                 aria-pressed={dayType === option.value}
                 onClick={() => onDayTypeChange(option.value)}
-                className={cn(dayType !== option.value && "bg-card")}
+                className={cn(
+                  "rounded-md px-3.5 py-1.5 text-sm transition-colors",
+                  dayType === option.value
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
               >
                 {option.label}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -168,25 +184,28 @@ export function WorkDayHeader({
         )}
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="notes">Notes</Label>
-          <Textarea
-            id="notes"
-            name="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            aria-invalid={!!state.fieldErrors?.notes}
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={isPending} size="sm">
-            <Save className="size-4" /> {isPending ? "Saving…" : "Save"}
-          </Button>
-          <span role="status" className="text-muted-foreground text-sm">
-            {state.status === "error" && state.message}
-            {state.status === "success" && "Saved."}
-          </span>
+          <Label htmlFor="notes" className="text-muted-foreground text-xs">
+            Notes
+          </Label>
+          <div className="flex items-center gap-3">
+            <Input
+              id="notes"
+              name="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Write your notes for today..."
+              aria-invalid={!!state.fieldErrors?.notes}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={isPending}>
+              Save Changes
+            </Button>
+          </div>
+          {state.status === "error" && (
+            <span role="status" className="text-destructive text-sm">
+              {state.message}
+            </span>
+          )}
         </div>
       </form>
     </section>
