@@ -9,3 +9,9 @@ export const workingDaysSchema = z.object({
 });
 
 export type WorkingDaysInput = z.infer<typeof workingDaysSchema>;
+
+// Empty = unlink. Otherwise must be a Google Sheets link (or bare spreadsheet id) — the id is
+// extracted server-side by extractSpreadsheetId, never trusted from the client.
+export const googleSheetLinkSchema = z.object({
+  sheetUrl: z.string().trim().max(500),
+});

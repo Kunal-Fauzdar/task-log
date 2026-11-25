@@ -70,7 +70,7 @@ export async function createTaskAction(
   });
   await setTaskSkills(user.id, task.id, parseSkillIds(formData));
 
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
   return { status: "success" };
 }
 
@@ -100,20 +100,20 @@ export async function updateTaskAction(
   });
   await setTaskSkills(user.id, id, parseSkillIds(formData));
 
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
   return { status: "success" };
 }
 
 export async function deleteTaskAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await deleteTask(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function duplicateTaskAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await duplicateTask(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function moveTaskAction(
@@ -141,29 +141,29 @@ export async function moveTaskAction(
   [ids[a], ids[b]] = [ids[b], ids[a]];
 
   await reorderTasks(user.id, ids);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function startTaskTimerAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await startTaskTimer(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function pauseTaskTimerAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await pauseTaskTimer(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function resumeTaskTimerAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await resumeTaskTimer(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function completeTaskTimerAction(id: string, date: string): Promise<void> {
   const user = await requireUser();
   await completeTaskTimer(user.id, id);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }

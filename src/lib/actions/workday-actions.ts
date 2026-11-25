@@ -53,7 +53,7 @@ export async function updateWorkDayAction(
     dayNote: isDayOff ? parsed.data.dayNote || undefined : null,
   });
 
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
   return { status: "success" };
 }
 
@@ -62,8 +62,9 @@ export async function updateWorkDayAction(
 // revalidate in place. Lands on /dashboard, the app's home, same as logoutAction.
 export async function deleteWorkDayAction(id: string): Promise<void> {
   const user = await requireUser();
-  await deleteWorkDay(user.id, id);
-  revalidateWorkViews();
+  const deleted = await deleteWorkDay(user.id, id);
+  // The deleted row's date (when it was ours) tells the sheet sync which month tab to rewrite.
+  revalidateWorkViews(user.id, deleted?.date);
   redirect("/dashboard");
 }
 
@@ -77,7 +78,7 @@ export async function startWorkAction(
 ): Promise<void> {
   const user = await requireUser();
   await startWork(user.id, workDayId, new Date(checkInAtIso));
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function endWorkAction(
@@ -87,25 +88,25 @@ export async function endWorkAction(
 ): Promise<void> {
   const user = await requireUser();
   await endWork(user.id, workDayId, new Date(checkOutAtIso));
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function resetWorkDayTimesAction(workDayId: string, date: string): Promise<void> {
   const user = await requireUser();
   await resetWorkDayTimes(user.id, workDayId);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function startBreakAction(workDayId: string, date: string): Promise<void> {
   const user = await requireUser();
   await startBreak(user.id, workDayId);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function endBreakAction(workDayId: string, date: string): Promise<void> {
   const user = await requireUser();
   await endBreak(user.id, workDayId);
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
 }
 
 export async function updateWorkDayTimesAction(
@@ -137,6 +138,6 @@ export async function updateWorkDayTimesAction(
     breakSeconds: parsed.data.breakDuration,
   });
 
-  revalidateWorkViews(date);
+  revalidateWorkViews(user.id, date);
   return { status: "success" };
 }

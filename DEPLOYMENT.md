@@ -267,3 +267,65 @@ confirmed end-to-end via a real browser login/logout. Sections 6 (steps 1–4)�
 vars, deploy, production migration, production verification) are written but not yet executed
 against a real Vercel deployment — they'll be validated for real during Phase 11 when the app
 is actually deployed. Update this file if anything turns out to work differently in practice.
+
+## 12. Google Sheet sync (optional)
+
+Lets each user link a Google Sheet on `/settings`; every work-day/task change is mirrored into
+that month's tab ("November", created if missing) — one-way, app → sheet. There are two ways for
+the app to get write access: set up **A** (recommended), and optionally **B** as a fallback.
+With neither, the panel shows "not set up on this server".
+
+### A. "Connect Google account" (OAuth — no sheet sharing needed)
+
+The user clicks **Connect Google account**, signs in, clicks **Allow**, and the app writes to
+their sheet *as them*.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create (or pick) a project and
+   enable the **Google Sheets API** (APIs & Services → Library).
+2. **OAuth consent screen** (Google Auth Platform → Branding / Audience / Data access): app
+   name + support email; under **Data access** add the scopes `openid`,
+   `.../auth/userinfo.email`, and `https://www.googleapis.com/auth/spreadsheets`.
+   - **Audience = External, status "Testing"**: only emails listed under **Test users** (max 100)
+     can connect, and Google **expires their refresh tokens after 7 days** (users then see
+     "reconnect" on /settings). Fine for a small team.
+   - To lift both limits, **Publish** the app. `spreadsheets` is a *sensitive* scope, so Google
+     requires app verification (privacy-policy URL, verified domain, short demo video); users see
+     an "unverified app" warning until it's approved.
+3. **Clients → Create client → Web application**. Authorized redirect URIs, one per origin,
+   exact match:
+   ```
+   http://localhost:3000/api/google/callback
+   https://<your-vercel-domain>/api/google/callback
+   ```
+4. Put the client ID/secret in `.env` and in Vercel (Production + Preview), then redeploy:
+   ```
+   GOOGLE_OAUTH_CLIENT_ID="1234-abc.apps.googleusercontent.com"
+   GOOGLE_OAUTH_CLIENT_SECRET="GOCSPX-..."
+   ```
+   Refresh tokens are stored AES-256-GCM-encrypted with a key derived from `SESSION_SECRET`, so
+   rotating `SESSION_SECRET` means every user has to reconnect Google.
+
+### B. Shared bot account (service account — fallback)
+
+Only used for users who haven't connected Google; they share their sheet with the bot's email
+as **Editor**.
+
+1. Same project, Sheets API enabled. Credentials → **Create credentials → Service account** (no
+   roles) → **Keys → Add key → JSON**.
+2. From that JSON set (paste `private_key` as-is: one line, literal `\n`s — the app converts
+   them). Never commit the JSON file.
+   ```
+   GOOGLE_SERVICE_ACCOUNT_EMAIL="worklog-sync@your-project.iam.gserviceaccount.com"
+   GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"
+   ```
+
+### Troubleshooting
+
+| What you see | Cause |
+|---|---|
+| `redirect_uri_mismatch` on Google's page | The exact `<origin>/api/google/callback` isn't in the OAuth client's redirect URIs |
+| "Access blocked … has not completed verification" | That Google account isn't a Test user (Testing mode) |
+| "reconnect your Google account" on /settings | Refresh token revoked/expired (7-day Testing expiry, password change, access removed in Google account settings) — click Connect again |
+| "can't edit this sheet" | The connected Google account isn't owner/editor of that sheet |
+| "isn't shared with the sync account" | Fallback B: share the sheet with the bot email as Editor |
+| "Couldn't authenticate with Google" | Fallback B: bad/mis-pasted private key, or Sheets API not enabled |

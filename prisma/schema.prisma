@@ -193,6 +193,17 @@ model AppSettings {
   /// Drives which blank days a month/range Excel export fills in for days never logged — see
   /// fillMissingWorkingDays in src/lib/domain/workday.ts.
   workingDays Int[]    @default([1, 2, 3, 4, 5])
+  /// Linked Google Sheet (spreadsheet id parsed from the pasted URL). The app mirrors each
+  /// month's work log into a "<Month YYYY>" tab, one-way (app → sheet). Null = not linked.
+  googleSheetId  String?
+  /// Outcome of the most recent sync attempt, shown on /settings. A sync failure never fails
+  /// the user's own mutation — it's recorded here instead.
+  sheetSyncedAt  DateTime?
+  sheetSyncError String?
+  /// "Connect Google account" (OAuth): the app writes to the sheet as the user, so no manual
+  /// sharing is needed. Refresh token is AES-256-GCM encrypted at rest (src/lib/auth/crypto.ts).
+  googleRefreshToken String?
+  googleAccountEmail String?
   updatedAt   DateTime @updatedAt
 
   @@map("app_settings")

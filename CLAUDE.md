@@ -797,6 +797,64 @@ recommended option:
   `layout.tsx` is `async`, fetches `getCurrentUser()`, passes it to `AppShell` → `Header` — so
   **every route is now `ƒ` (dynamic)**, which also permanently retires the Phase-11
   static-snapshot staleness class of bug.
+- **Google Sheet sync (user request: "a link to sheet is added and the website makes changes in
+  that too").** Forks settled via `AskUserQuestion`, all recommended options: Google Sheets,
+  **one-way app → sheet**, **automatic on every change**, **one tab per month** ("November",
+  month name only — see Tab matching below). Design:
+  - `AppSettings` gained `googleSheetId` / `sheetSyncedAt` / `sheetSyncError` (migration
+    `20261125095759_add_google_sheet_sync`, applied to Neon).
+  - Auth is a **service account** (env `GOOGLE_SERVICE_ACCOUNT_EMAIL` +
+    `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, DEPLOYMENT.md §12) — the user shares their sheet with
+    that email as Editor. No per-user OAuth. `src/lib/sheets/google-client.ts` is a hand-rolled
+    RS256 JWT → access token → plain-`fetch` Sheets v4 client (deliberately not `googleapis`).
+    Env unset ⇒ feature shows "not set up" and every sync is a no-op.
+  - **Single layout implementation:** `src/lib/sheets/layout.ts` converts the *finished ExcelJS
+    worksheet* from `buildWorkLogWorkbook` into batchUpdate requests (values, bold, header fill,
+    borders, merges, `=HYPERLINK(url,"link")`, column widths, frozen header), so the synced tab
+    can't drift from the .xlsx. All values are written as `stringValue` (a description starting
+    with `=` stays text). Each sync is a full, atomic rewrite of that month's tab — manual edits
+    in a synced tab are overwritten; other tabs are never touched; the grid only grows.
+  - `src/lib/data/export-data.ts` `loadExportData` was extracted from `/api/export` so the
+    download and the sync load identical rows.
+  - **Trigger:** `revalidateWorkViews(userId, date)` (signature changed — now takes the user id)
+    calls `scheduleSheetSync`, which runs in Next's `after()` (post-response, never slows the
+    UI) and serialises syncs per user+month in-process so the last-finishing sync wrote the
+    latest DB state. Import also schedules a sync for each imported month. Sync failures never
+    fail the mutation — they're stored in `sheetSyncError` and shown on `/settings`.
+  - **Tab matching = month name only (user, twice: "it should match like November and make
+    changes in that. If they don't exist then make a new one").** `resolveMonthTab`
+    (`sync.ts`) writes into the existing tab whose name is the month (`findMonthTab`,
+    case-insensitive/trimmed) and otherwise creates one named `monthTabName(month)`
+    ("November"). **The year is ignored on purpose** — a year-aware guard was built and then
+    removed at the user's request — so next November's sync rewrites this year's "November"
+    tab. The user's real sheet has tabs "January".."December"; its November tab was verified
+    row-for-row identical to the app's export before switching the sync onto it.
+  - **"Connect Google account" (OAuth) replaced manual sharing as the primary path** (user:
+    "currently I need to add email manually for access… send request on mail"). Google has **no
+    API to create an access request** (Drive `accessproposals` is list/resolve only), so the
+    `AskUserQuestion` fork picked per-user OAuth instead. `src/lib/sheets/google-oauth.ts`
+    (hand-rolled auth-code flow: `buildAuthUrl` with `access_type=offline` + `prompt=consent`,
+    `exchangeCode` rejects if the user unticked the Sheets scope, `refreshAccessToken` maps
+    `invalid_grant` → `GoogleAuthError{revoked:true}`, `revokeToken`); routes
+    `/api/google/connect` (sets a 10-min `worklog_google_oauth` nonce cookie, path
+    `/api/google`) and `/api/google/callback` (HMAC-signed `state` must match the logged-in uid
+    + the nonce cookie, then stores the token and syncs this month if a sheet is linked, then
+    redirects `/settings?google=<status>`). `AppSettings.googleRefreshToken` (AES-256-GCM via
+    `src/lib/auth/crypto.ts`, key derived from `SESSION_SECRET`) + `googleAccountEmail`
+    (migration `20261125120025_add_google_oauth`). Every Sheets call now takes a `SheetsAuth`
+    (`{kind:"user"}` preferred, `{kind:"service"}` fallback — `resolveAuth` in `sync.ts`); a
+    revoked token is auto-cleared so Settings shows "Connect" again. Env:
+    `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` (DEPLOYMENT.md §12 A). **Not exercised against real
+    Google OAuth** in the build session (no OAuth client existed) — unit-tested
+    (`google-oauth.test.ts`); the service-account fallback was re-verified live after the
+    refactor. Testing-mode consent screens expire refresh tokens after 7 days.
+  - `/settings` → `GoogleSheetForm`: paste link (linking syncs the current month synchronously
+    so share errors surface immediately), "Sync now" (current + previous month), "Open sheet",
+    clear-and-save to unlink.
+  - **Not verified against real Google** in the build session (no service-account credentials
+    existed yet) — unit-tested at the request-building layer only (`sheets-sync.test.ts`).
+    Project rename/delete doesn't auto-resync (the " (Project)" suffix updates on the next sync
+    of that month or "Sync now").
 - **No per-row timezone handling.** All check-in/out/break/task timestamps are stored as
   naive local wall-clock time tied to `WorkDay.date`. Single-timezone tool (all of a user's own
   days are in their timezone); documented here so nobody "fixes" it into UTC conversion later.

@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/current-user";
 import { importWorkDayGroups, type ImportOutcome } from "@/lib/data/import";
 import { importConfirmSchema } from "@/lib/validation/import";
+import { parseDateOnly } from "@/lib/domain/date";
+import { scheduleSheetSync } from "@/lib/sheets/sync";
 
 export type ImportActionResult = ImportOutcome | { error: string };
 
@@ -25,5 +27,10 @@ export async function importWorkLogAction(groups: unknown): Promise<ImportAction
   revalidatePath("/worklog");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
+  // Re-sync every month the imported days fall in (one tab rewrite per month, not per day).
+  scheduleSheetSync(
+    user.id,
+    parsed.data.groups.map((group) => parseDateOnly(group.date)),
+  );
   return outcome;
 }
